@@ -49,9 +49,11 @@ function MiniPreview({ spec }: { spec: ComponentSpec }) {
           style={{
             width: spec.defaultW,
             height: spec.defaultH,
-            transform: `scale(${scale})`,
+            transform: `translate(-50%, -50%) scale(${scale})`,
             transformOrigin: "center center",
-            position: "relative",
+            position: "absolute",
+            left: "50%",
+            top: "50%",
           }}
         >
           <SketchProvider roughness={1.1}>

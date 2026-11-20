@@ -24,12 +24,19 @@ export function FrameThumb({
 }) {
   const m = shellMetrics(frame);
   const rect = frameBlockRect(frame);
-  const scale = Math.min(width / rect.w, height / rect.h);
+  const labelH = showLabel ? m.labelH : 0;
+  const contentH = rect.h - (showLabel ? 0 : m.labelH);
+  const scale = Math.min(width / rect.w, height / contentH);
   return (
     <div className="frame-thumb" style={{ width, height }} aria-hidden>
       <div
         className="frame-thumb-inner"
-        style={{ width: rect.w, height: rect.h, transform: `scale(${scale})` }}
+        style={{
+          width: rect.w,
+          height: contentH,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "center center",
+        }}
       >
         {showLabel && (
           <div className="frame-thumb-label" style={{ height: m.labelH, paddingLeft: m.padX + 2 }}>
@@ -43,7 +50,7 @@ export function FrameThumb({
           style={{
             position: "absolute",
             left: m.padX,
-            top: m.padTop + (showLabel ? m.labelH : 0),
+            top: m.padTop + labelH,
             width: frame.w,
             height: frame.h,
           }}

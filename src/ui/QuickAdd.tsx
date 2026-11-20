@@ -130,9 +130,11 @@ function ComponentThumb({ type, props }: { type: ElementType; props?: Partial<El
         style={{
           width: spec.defaultW,
           height: spec.defaultH,
-          transform: `scale(${scale})`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
           transformOrigin: "center center",
-          position: "relative",
+          position: "absolute",
+          left: "50%",
+          top: "50%",
           display: "block",
         }}
       >
