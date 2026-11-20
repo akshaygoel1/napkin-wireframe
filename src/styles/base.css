@@ -1,0 +1,556 @@
+/* ── Fonts ─────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Balsamiq Sans";
+  src: url("/fonts/balsamiq-2.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Balsamiq Sans";
+  src: url("/fonts/balsamiq-3.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Balsamiq Sans";
+  src: url("/fonts/balsamiq-0.woff2") format("woff2");
+  font-weight: 400;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Balsamiq Sans";
+  src: url("/fonts/balsamiq-1.woff2") format("woff2");
+  font-weight: 700;
+  font-style: italic;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/inter.woff2") format("woff2");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Material Symbols Rounded";
+  src: url("/fonts/ms-rounded-sub.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Material Symbols Outlined";
+  src: url("/fonts/ms-outlined-sub.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Material Symbols Sharp";
+  src: url("/fonts/ms-sharp-sub.woff2") format("woff2");
+  font-weight: 100 700;
+  font-style: normal;
+  font-display: block;
+}
+
+/* ── Tokens ────────────────────────────────────────────────────────────── */
+:root {
+  --ink: #26232b;
+  --ink-bar: #2a2733;
+  --ink-deep: #1d1a24;
+  --muted: #6f6a76;
+  --faint: #a39da8;
+  --line: #e5e1db;
+  --soft: #e9e6e1;
+  --softer: #f3f1ec;
+  --paper: #ffffff;
+  --canvas: #f3f2f0;
+  --accent: #f0643c;
+  --accent-deep: #d9532f;
+  --accent-tint: #fff1eb;
+  --blue: #4a6ee0;
+  --blue-tint: #f2f5fd;
+  --sticky: #ffdf40;
+  --danger: #c2482c;
+  --danger-tint: #fff3ef;
+
+  --font-ui: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  --font-hand: "Balsamiq Sans", "Patrick Hand", "Comic Sans MS", cursive;
+  --font-mono: "SFMono-Regular", "Cascadia Mono", Consolas, monospace;
+
+  --radius-panel: 14px;
+  --radius-card: 10px;
+  --shadow-panel:
+    0 20px 55px -22px rgba(38, 35, 43, 0.32),
+    0 3px 12px -4px rgba(38, 35, 43, 0.1);
+  --shadow-pop:
+    0 22px 50px -18px rgba(38, 35, 43, 0.3),
+    0 2px 8px rgba(38, 35, 43, 0.08);
+  --shadow-dialog: 0 48px 120px -28px rgba(22, 19, 29, 0.55);
+  --ease: cubic-bezier(0.22, 0.8, 0.3, 1);
+}
+
+/* ── Reset ─────────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--canvas);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin-top: 0;
+}
+
+button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+input,
+select,
+textarea {
+  color: inherit;
+  font: inherit;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--faint);
+}
+
+svg {
+  display: block;
+}
+
+::selection {
+  background: rgba(240, 100, 60, 0.22);
+}
+
+:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+
+.topbar :focus-visible {
+  outline-color: #ffb29b;
+}
+
+/* ── Scrollbars ────────────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(38, 35, 43, 0.2) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 8px;
+  background: rgba(38, 35, 43, 0.16);
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(38, 35, 43, 0.28);
+  background-clip: padding-box;
+}
+
+/* ── Shared primitives ─────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition:
+    background 0.14s var(--ease),
+    border-color 0.14s var(--ease),
+    color 0.14s var(--ease),
+    transform 0.12s var(--ease);
+}
+
+.btn:active {
+  transform: translateY(0.5px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px -4px rgba(240, 100, 60, 0.55);
+}
+
+.btn-primary:hover {
+  background: var(--accent-deep);
+}
+
+.btn-primary:disabled {
+  box-shadow: none;
+  opacity: 0.55;
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.btn-ghost:hover {
+  background: var(--softer);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.5;
+}
+
+.btn-danger-ghost {
+  border-color: rgba(194, 72, 44, 0.22);
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.btn-danger-ghost:hover {
+  border-color: rgba(194, 72, 44, 0.4);
+  background: #ffe9e2;
+}
+
+.btn.full {
+  width: 100%;
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+}
+
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex: none;
+  border-radius: 6px;
+  color: var(--muted);
+  transition:
+    background 0.13s var(--ease),
+    color 0.13s var(--ease);
+}
+
+.icon-btn:hover {
+  background: var(--softer);
+  color: var(--ink);
+}
+
+.icon-btn.danger:hover {
+  background: var(--danger-tint);
+  color: var(--danger);
+}
+
+.icon-btn.is-favorite {
+  color: var(--accent);
+}
+
+.link-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  color: var(--accent-deep);
+  font-size: 11.5px;
+  font-weight: 600;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(217, 83, 47, 0.35);
+  line-height: 1.5;
+}
+
+.link-btn:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 19px;
+  padding: 0 4px;
+  border: 1px solid rgba(38, 35, 43, 0.12);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: rgba(38, 35, 43, 0.05);
+  color: var(--muted);
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.seg-small {
+  display: inline-flex;
+  gap: 1px;
+  padding: 2px;
+  border-radius: 7px;
+  background: var(--softer);
+}
+
+.seg-small button {
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 10.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.seg-small button:hover {
+  color: var(--ink);
+}
+
+.seg-small button.active {
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgba(38, 35, 43, 0.14);
+  color: var(--ink);
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 6px 0;
+  color: var(--ink);
+  font-size: 11.5px;
+}
+
+.toggle-row > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.toggle-row input[type="checkbox"] {
+  position: relative;
+  width: 32px;
+  height: 18px;
+  flex: none;
+  margin: 0;
+  border-radius: 20px;
+  background: #d8d3cc;
+  cursor: pointer;
+  appearance: none;
+  transition: background 0.15s var(--ease);
+}
+
+.toggle-row input[type="checkbox"]::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(38, 35, 43, 0.25);
+  transition: transform 0.16s var(--ease);
+}
+
+.toggle-row input[type="checkbox"]:checked {
+  background: var(--accent);
+}
+
+.toggle-row input[type="checkbox"]:checked::after {
+  transform: translateX(14px);
+}
+
+.toggle-row.compact {
+  padding: 2px 0;
+  font-size: 10.5px;
+}
+
+input[type="range"] {
+  width: 100%;
+  height: 18px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--soft);
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  width: 13px;
+  height: 13px;
+  margin-top: -4.5px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(38, 35, 43, 0.2);
+  appearance: none;
+}
+
+input[type="range"]::-moz-range-track {
+  height: 4px;
+  border-radius: 4px;
+  background: var(--soft);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 11px;
+  height: 11px;
+  border: 2px solid var(--accent);
+  border-radius: 50%;
+  background: #fff;
+}
+
+/* Hide native number spinners; fields act like compact design controls. */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  margin: 0;
+  appearance: none;
+}
+
+input[type="number"] {
+  appearance: textfield;
+}
+
+.empty-face {
+  color: var(--faint);
+  font-family: var(--font-hand);
+  font-size: 27px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+
+/* ── Layout ────────────────────────────────────────────────────────────── */
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.workspace {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ── Motion ────────────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes dialogIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes flyoutIn {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 8px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

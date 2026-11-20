@@ -1,0 +1,124 @@
+/* ── Wireframe content ─────────────────────────────────────────────────── */
+.wf-root {
+  color: var(--ink);
+  font-family: var(--font-hand);
+  font-size: 13px;
+  line-height: 1.2;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wf-row,
+.wf-col,
+.wf-t,
+.wf-label {
+  box-sizing: border-box;
+}
+
+.wf-row {
+  display: flex;
+  align-items: center;
+}
+
+.wf-col {
+  display: flex;
+  flex-direction: column;
+}
+
+.wf-t {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.wf-label {
+  font-family: var(--font-hand);
+  letter-spacing: 0.005em;
+}
+
+.wf-root svg {
+  flex: none;
+}
+
+.glyph {
+  font-feature-settings: "liga" 1;
+  font-variant-ligatures: normal;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* Markup sits above regular UI and is visibly unofficial. */
+.el.markup-el {
+  z-index: 3;
+}
+
+/* ── Export mode ───────────────────────────────────────────────────────── */
+html.is-exporting .hover-ui,
+html.is-exporting .sel-outline,
+html.is-exporting .sel-chip,
+html.is-exporting .sel-toolbar,
+html.is-exporting .sel-handle,
+html.is-exporting .artboard-selected-ring,
+html.is-exporting .frame-actions,
+html.is-exporting .frame-menu,
+html.is-exporting .frame-selected-tag,
+html.is-exporting .frame-name-input {
+  display: none !important;
+}
+
+html.is-exporting .frame-label {
+  cursor: default;
+  pointer-events: none;
+}
+
+html.is-exporting .el {
+  cursor: default;
+}
+
+html.is-exporting .frame-block {
+  background-repeat: repeat;
+}
+
+html.is-exporting.export-bg-white .frame-block {
+  background-color: #ffffff;
+}
+
+html.is-exporting.export-bg-paper .frame-block {
+  background-color: #f3f2f0;
+  background-image: radial-gradient(circle, rgba(38, 35, 43, 0.16) 1.05px, transparent 1.3px);
+  background-size: 24px 24px;
+  background-position: 0 0;
+}
+
+html.is-exporting.export-bg-transparent .frame-block {
+  background-color: transparent;
+  background-image: none;
+}
+
+html.is-exporting.export-title-off .frame-label {
+  display: none !important;
+}
+
+html.is-exporting.export-markup-off .markup-el {
+  display: none !important;
+}
+
+html.is-exporting .frame-shell.no-shell,
+html.is-exporting .frame-shell.has-shell.shell-blank {
+  box-shadow: none !important;
+}
+
+html.is-exporting .frame-shell.has-shell.shell-phone,
+html.is-exporting .frame-shell.has-shell.shell-tablet {
+  box-shadow:
+    inset 0 0 0 1.5px #48424f,
+    inset 0 0 0 4px #17151c !important;
+}
+
+html.is-exporting .frame-shell.has-shell.shell-desktop {
+  box-shadow: inset 0 0 0 1px #423d4b !important;
+}
+
+html.is-exporting.export-title-off .artboard::after {
+  border-radius: inherit;
+}
