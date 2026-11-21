@@ -1,11 +1,25 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronRight, Search, X } from "lucide-react";
+import { ChevronRight, Search, X } from "lucide-react";
 import { COMPONENTS, GROUP_ORDER, SPECS } from "../data/components";
 import { useStore } from "../store";
 import type { ComponentGroup, ComponentSpec } from "../types";
 import { searchComponents } from "../utils/fuzzy";
 import { SketchProvider, Glyph } from "../components/Sketch";
 import { Wireframe } from "../components/Wireframe";
+
+const MOST_USED: ComponentSpec["type"][] = [
+  "button",
+  "text",
+  "text-field",
+  "image",
+  "icon",
+  "rectangle",
+  "rounded-rect",
+  "circle",
+  "line",
+  "checkbox",
+  "card",
+];
 
 const VARIANTS: Partial<Record<ComponentSpec["type"], string[]>> = {
   button: ["filled", "tonal", "outlined", "text", "elevated"],
@@ -86,7 +100,6 @@ export function ComponentLibrary() {
   const setFlyout = useStore((s) => s.setFlyout);
   const [query, setQuery] = useState("");
   const [platform, setPlatform] = useState<"all" | "mobile" | "desktop">("all");
-  const [collapsed, setCollapsed] = useState<Set<ComponentGroup>>(new Set(["Communication", "Selection", "Text inputs", "Primitives"]));
 
   const filtered = useMemo(() => {
     let list = COMPONENTS;
@@ -103,16 +116,15 @@ export function ComponentLibrary() {
     return map;
   }, [filtered]);
 
-  const searching = query.trim().length > 0;
+  const mostUsed = useMemo(
+    () =>
+      MOST_USED.map((type) => SPECS[type]).filter(
+        (spec) => platform === "all" || spec.platforms.includes("both") || spec.platforms.includes(platform),
+      ),
+    [platform],
+  );
 
-  const toggleGroup = (g: ComponentGroup) => {
-    setCollapsed((prev) => {
-      const next = new Set(prev);
-      if (next.has(g)) next.delete(g);
-      else next.add(g);
-      return next;
-    });
-  };
+  const searching = query.trim().length > 0;
 
   return (
     <aside className="flyout component-library" aria-label="Component library">
@@ -136,7 +148,11 @@ export function ComponentLibrary() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={(e) => {
             e.stopPropagation();
-            if (e.key === "Escape") setFlyout(null);
+            if (e.key === "Escape") {
+              const st = useStore.getState();
+              if (st.armed) st.setArmed(null);
+              else setFlyout(null);
+            }
           }}
         />
         {query && (
@@ -165,31 +181,41 @@ export function ComponentLibrary() {
           </div>
         )}
 
+        {!searching && mostUsed.length > 0 && (
+          <section className="lib-group lib-most-used">
+            <div className="lib-group-head is-static">
+              <span>Most used</span>
+              <span className="lib-group-count">{mostUsed.length}</span>
+            </div>
+            <div className="lib-grid">
+              {mostUsed.map((spec) => (
+                <MiniPreview key={`most-${spec.type}`} spec={spec} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {GROUP_ORDER.map((group) => {
           const items = grouped.get(group) ?? [];
           if (!items.length) return null;
-          const isCollapsed = !searching && collapsed.has(group);
           return (
             <section className="lib-group" key={group}>
-              <button className="lib-group-head" onClick={() => toggleGroup(group)} disabled={searching}>
-                {isCollapsed ? <ChevronRight size={15} /> : <ChevronDown size={15} />}
+              <div className="lib-group-head is-static">
                 <span>{group}</span>
                 <span className="lib-group-count">{items.length}</span>
-              </button>
-              {!isCollapsed && (
-                <div className="lib-grid">
-                  {items.map((spec) => (
-                    <MiniPreview key={spec.type} spec={spec} />
-                  ))}
-                </div>
-              )}
+              </div>
+              <div className="lib-grid">
+                {items.map((spec) => (
+                  <MiniPreview key={spec.type} spec={spec} />
+                ))}
+              </div>
             </section>
           );
         })}
       </div>
 
       <div className="flyout-foot">
-        Click a tile, then click or drag on the canvas — or press <kbd>/</kbd> to type
+        Click a tile, then click or drag on the canvas — this panel stays open. <kbd>Esc</kbd> stops placing.
       </div>
     </aside>
   );

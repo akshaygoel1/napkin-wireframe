@@ -25,9 +25,10 @@ interface StoreState {
   selectedFrameId: string | null;
   view: ViewState;
   tool: "select" | "hand";
-  armed: { type: ElementType; variant?: string } | null;
+  armed: { type: ElementType; variant?: string; props?: Partial<ElementProps>; w?: number; h?: number } | null;
   paletteOpen: boolean;
   flyout: Flyout;
+  contextMenu: { x: number; y: number } | null;
   exportOpen: boolean;
   shortcutsOpen: boolean;
   newFrameOpen: boolean;
@@ -92,7 +93,8 @@ interface StoreState {
   // view + ui
   setView: (view: Partial<ViewState>) => void;
   setTool: (tool: "select" | "hand") => void;
-  setArmed: (armed: { type: ElementType; variant?: string } | null) => void;
+  setArmed: (armed: { type: ElementType; variant?: string; props?: Partial<ElementProps>; w?: number; h?: number } | null) => void;
+  setContextMenu: (menu: { x: number; y: number } | null) => void;
   setPaletteOpen: (open: boolean, seed?: string) => void;
   setFlyout: (flyout: Flyout) => void;
   setExportOpen: (open: boolean, frameFilter?: string[] | null) => void;
@@ -209,6 +211,7 @@ export const useStore = create<StoreState>()(
     armed: null,
     paletteOpen: false,
     flyout: null,
+    contextMenu: null,
     exportOpen: false,
     shortcutsOpen: false,
     newFrameOpen: false,
@@ -600,16 +603,18 @@ export const useStore = create<StoreState>()(
     setArmed: (armed) =>
       set((s) => {
         s.armed = armed;
+        s.contextMenu = null;
         if (armed) {
-          s.flyout = null;
           s.paletteOpen = false;
           s.tool = "select";
         }
       }),
+    setContextMenu: (menu) => set((s) => { s.contextMenu = menu; }),
     setPaletteOpen: (open, seed = "") =>
       set((s) => {
         s.paletteOpen = open;
         s.quickAddSeed = open ? seed : "";
+        s.contextMenu = null;
         if (open) {
           s.flyout = null;
           s.armed = null;

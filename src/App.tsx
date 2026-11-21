@@ -5,6 +5,7 @@ import { useStore } from "./store";
 import { AboutDialog } from "./ui/AboutDialog";
 import { BottomBar } from "./ui/BottomBar";
 import { ComponentLibrary } from "./ui/ComponentLibrary";
+import { ElementContextMenu } from "./ui/ElementContextMenu";
 import { ExportDialog } from "./ui/ExportDialog";
 import { FramesFlyout, ImageFlyout, MarkupFlyout } from "./ui/Flyouts";
 import { IconPicker } from "./ui/IconPicker";
@@ -120,12 +121,16 @@ function useGlobalShortcuts() {
 
       if (e.key === "Escape") {
         e.preventDefault();
-        if (state.flyout) {
-          state.setFlyout(null);
+        if (state.contextMenu) {
+          state.setContextMenu(null);
           return;
         }
         if (state.armed) {
           state.setArmed(null);
+          return;
+        }
+        if (state.flyout) {
+          state.setFlyout(null);
           return;
         }
         if (state.selection.length) {
@@ -299,6 +304,7 @@ export function App() {
       {shortcutsOpen && <ShortcutsDialog />}
       {newFrameOpen && <NewFrameDialog />}
       {aboutOpen && <AboutDialog />}
+      <ElementContextMenu />
       <Toast />
     </div>
   );

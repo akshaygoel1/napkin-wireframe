@@ -79,6 +79,8 @@ export interface ElementProps {
   align?: "left" | "center" | "right";
   lines?: number;
   placeholder?: string;
+  /** One contextual colour per element. Omitted means the default ink look. */
+  color?: string;
 }
 
 export interface NapkinElement {

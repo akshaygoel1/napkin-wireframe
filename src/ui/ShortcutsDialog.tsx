@@ -10,6 +10,8 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
       ["New frame", "F"],
       ["Icons", "I"],
       ["Text tool", "T"],
+      ["Double-click artboard", "Add text"],
+      ["Double-click bare canvas", "Quick-add"],
       ["Add and keep armed", "Shift + click"],
       ["Repeat duplicate", "⌘ / Ctrl + D"],
     ],
@@ -32,6 +34,7 @@ const GROUPS: { title: string; rows: [string, string][] }[] = [
       ["Copy / paste", "⌘ / Ctrl + C · V"],
       ["Duplicate", "⌘ / Ctrl + D"],
       ["Bring forward / back", "] / ["],
+      ["Right-click element", "Color · size · layer"],
       ["Delete selection", "⌫"],
       ["Select all in frame", "⌘ / Ctrl + A"],
     ],
@@ -100,7 +103,7 @@ export function ShortcutsDialog() {
           </div>
           <div className="syntax-tip">
             <b>Tip</b>
-            <span>Double-click a frame to open quick-add in place.</span>
+            <span>Double-click empty artboard space to drop a text box. Double-click bare canvas for quick-add.</span>
           </div>
         </aside>
       </div>

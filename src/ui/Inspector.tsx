@@ -30,7 +30,9 @@ import { useSelectedElement, useSelectedFrame, useStore } from "../store";
 import type { ElementProps, ElementType, NapkinElement } from "../types";
 import { canvasApi } from "../utils/canvasApi";
 import { clamp } from "../utils/geometry";
+import { supportsColor } from "../utils/color";
 import { Glyph } from "../components/Sketch";
+import { ColorField } from "./ColorField";
 
 const VARIANT_OPTIONS: Partial<Record<ElementType, string[]>> = {
   button: ["filled", "tonal", "outlined", "text", "elevated"],
@@ -335,16 +337,29 @@ function ElementInspector({ el }: { el: NapkinElement }) {
       {hasItems && (
         <Section title="Items">
           <ItemsField el={el} />
-          <div className="insp-hint">Separate with commas. Selected index is set by the first highlighted item.</div>
+          <div className="insp-hint">Separate with commas. Selected index starts at 1.</div>
           {(el.props.selectedIndex !== undefined || ["chips", "tabs", "nav-bar", "nav-rail", "segmented-button"].includes(el.type)) && (
             <NumField
               label="Selected"
-              value={el.props.selectedIndex ?? 0}
-              min={0}
-              max={Math.max(0, (el.props.items?.length ?? 1) - 1)}
-              onCommit={(selectedIndex) => updateProps(el.id, { selectedIndex })}
+              value={Math.min(Math.max(1, (el.props.selectedIndex ?? 0) + 1), Math.max(1, el.props.items?.length ?? 1))}
+              min={1}
+              max={Math.max(1, el.props.items?.length ?? 1)}
+              onCommit={(selected) => updateProps(el.id, { selectedIndex: Math.round(selected) - 1 })}
             />
           )}
+        </Section>
+      )}
+
+      {supportsColor(el.type) && (
+        <Section title="Color">
+          <ColorField value={el.props.color} onChange={(color) => updateProps(el.id, { color })} />
+          <div className="insp-hint">
+            {el.type === "text"
+              ? "Text color. Reset returns to ink."
+              : el.type === "rectangle" || el.type === "rounded-rect" || el.type === "circle"
+                ? "Fill color. The sketch outline stays ink."
+                : "One color per element. Reset returns to ink."}
+          </div>
         </Section>
       )}
 

@@ -55,6 +55,13 @@ export function ElementView({
         cursor: armed ? "crosshair" : "move",
       }}
       onPointerDown={(e) => onPointerDown(e, frame, el)}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const state = useStore.getState();
+        if (!state.selection.includes(el.id)) state.selectElements([el.id], frame.id);
+        state.setContextMenu({ x: e.clientX, y: e.clientY });
+      }}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onStartEdit(frame, el);

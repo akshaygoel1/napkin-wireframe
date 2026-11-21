@@ -4,12 +4,12 @@ import { ICON_CATEGORIES, ICONS, POPULAR_ICONS } from "../data/iconData";
 import { useSelectedElement, useStore } from "../store";
 import { searchIcons } from "../utils/fuzzy";
 import { Glyph } from "../components/Sketch";
-import { insertComponent } from "../utils/placement";
 
 type IconStyle = "rounded" | "outlined" | "sharp";
 
 export function IconPicker() {
   const setFlyout = useStore((s) => s.setFlyout);
+  const setArmed = useStore((s) => s.setArmed);
   const iconSlot = useStore((s) => s.iconSlot);
   const applyIcon = useStore((s) => s.applyIcon);
   const recents = useStore((s) => s.recents);
@@ -55,13 +55,13 @@ export function IconPicker() {
       useStore.getState().showToast(`${name.replace(/_/g, " ")} applied`);
       return;
     }
-    insertComponent(
-      "icon",
-      { icon: name, iconStyle: style, iconFill: fill, iconWeight: weight },
-      { w: size, h: size },
-    );
     useStore.getState().addRecentIcon(name);
-    setFlyout(null);
+    setArmed({
+      type: "icon",
+      props: { icon: name, iconStyle: style, iconFill: fill, iconWeight: weight },
+      w: size,
+      h: size,
+    });
   };
 
   return (
@@ -90,7 +90,11 @@ export function IconPicker() {
               e.preventDefault();
               commit(results[0].n);
             }
-            if (e.key === "Escape") setFlyout(null);
+            if (e.key === "Escape") {
+              const st = useStore.getState();
+              if (st.armed) st.setArmed(null);
+              else setFlyout(null);
+            }
           }}
         />
         {query && (
@@ -159,7 +163,7 @@ export function IconPicker() {
               <span className="icon-strip-label">Recent</span>
               <div className="icon-strip-icons">
                 {recentIcons.map((icon) => (
-                  <button key={icon!.n} onClick={() => setSelected(icon!.n)} title={icon!.n} className={selected === icon!.n ? "active" : ""}>
+                  <button key={icon!.n} onClick={() => commit(icon!.n)} title={`Place ${icon!.n}`} className={selected === icon!.n ? "active" : ""}>
                     <Glyph name={icon!.n} size={20} glyphStyle={style} fill={fill} weight={weight} />
                   </button>
                 ))}
@@ -171,7 +175,7 @@ export function IconPicker() {
               <span className="icon-strip-label">Favorites</span>
               <div className="icon-strip-icons">
                 {favoriteIcons.map((icon) => (
-                  <button key={icon!.n} onClick={() => setSelected(icon!.n)} title={icon!.n} className={selected === icon!.n ? "active" : ""}>
+                  <button key={icon!.n} onClick={() => commit(icon!.n)} title={`Place ${icon!.n}`} className={selected === icon!.n ? "active" : ""}>
                     <Glyph name={icon!.n} size={20} glyphStyle={style} fill={fill} weight={weight} />
                   </button>
                 ))}
@@ -195,14 +199,8 @@ export function IconPicker() {
               <button
                 key={icon.n}
                 className={`icon-tile ${selected === icon.n ? "selected" : ""}`}
-                onClick={() => setSelected(icon.n)}
-                onDoubleClick={() => commit(icon.n)}
-                title={icon.n}
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData("application/x-napkin-icon", icon.n);
-                  e.dataTransfer.effectAllowed = "copy";
-                }}
+                onClick={() => commit(icon.n)}
+                title={`Place ${icon.n}`}
               >
                 <Glyph name={icon.n} size={25} glyphStyle={style} fill={fill} weight={weight} />
                 <span>{icon.n.replace(/_/g, " ")}</span>
@@ -236,14 +234,13 @@ export function IconPicker() {
               <button key={s} className={size === s ? "active" : ""} onClick={() => setSize(s)}>{s}</button>
             ))}
           </div>
-          <button className="btn btn-primary icon-insert" onClick={() => commit()}>
-            {iconSlot ? "Use icon" : "Insert"}
-          </button>
         </div>
       </div>
 
       <div className="flyout-foot icon-foot">
-        Click an icon, then <b>Insert</b> · or drag it onto the canvas · <kbd>↵</kbd> inserts the first match
+        {iconSlot
+          ? "Click an icon to replace the current one"
+          : <>Click an icon to place it on the canvas · <kbd>↵</kbd> places the first match</>}
       </div>
     </aside>
   );

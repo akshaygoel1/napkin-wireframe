@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { ElementProps, ElementType } from "../types";
+import { deepen, readableOn, soften } from "../utils/color";
 import { Glyph, INK, MUTED, PAPER, SketchArrow, SketchCircle, SketchLine, SketchRect, SketchSegment, SOFT, SOFTER, Squiggles, STICKY } from "./Sketch";
 
 interface WProps {
@@ -81,9 +82,24 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
   switch (type) {
     case "button": {
       const variant = p.variant ?? "filled";
+      const tint = p.color;
       const filled = variant === "filled";
-      const bg = filled ? INK : variant === "tonal" ? SOFT : variant === "elevated" ? PAPER : variant === "text" ? "none" : PAPER;
-      const text = filled ? "#FFFFFF" : INK;
+      const elevated = variant === "elevated";
+      const soft = variant === "tonal";
+      const bg =
+        filled || (elevated && tint)
+          ? (tint ?? INK)
+          : soft
+            ? (tint ? soften(tint) : SOFT)
+            : PAPER;
+      const text = filled
+        ? (tint ? readableOn(bg) : "#FFFFFF")
+        : soft && tint
+          ? deepen(tint, 0.2)
+          : tint
+            ? (elevated ? readableOn(bg) : tint)
+            : INK;
+      const stroke = variant === "outlined" || variant === "text" ? (tint ?? INK) : INK;
       const fs = Math.max(11, Math.min(15, h * 0.33));
       return (
         <div style={{ position: "relative", width: "100%", height: "100%", opacity: p.state === "disabled" ? 0.4 : 1 }}>
@@ -93,6 +109,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
               h={h}
               r={Math.min(12, h * 0.3)}
               fill={bg}
+              stroke={stroke}
               seed={seed}
               strokeWidth={variant === "text" ? 0 : 1.5}
               style={variant === "elevated" ? { transform: "translate(-1.5px,-1.5px)" } : undefined}
@@ -110,11 +127,17 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
 
     case "icon-button": {
       const v = p.variant ?? "standard";
-      const fill = v === "filled" ? INK : v === "tonal" ? SOFT : PAPER;
-      const color = v === "filled" ? "#fff" : INK;
+      const tint = p.color;
+      const fill = tint
+        ? v === "filled" ? tint : v === "tonal" ? soften(tint) : PAPER
+        : v === "filled" ? INK : v === "tonal" ? SOFT : PAPER;
+      const color = tint
+        ? v === "filled" ? readableOn(tint) : v === "tonal" ? deepen(tint, 0.2) : tint
+        : v === "filled" ? "#fff" : INK;
+      const stroke = tint && (v === "standard" || v === "outlined") ? tint : INK;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%", opacity: p.state === "disabled" ? 0.4 : 1 }}>
-          <SketchRect w={w} h={h} r={Math.min(14, h * 0.32)} fill={fill} seed={seed} />
+          <SketchRect w={w} h={h} r={Math.min(14, h * 0.32)} fill={fill} stroke={stroke} seed={seed} />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Glyph name={p.icon ?? "favorite"} size={Math.min(24, w * 0.48)} color={color} />
           </div>
@@ -123,22 +146,24 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "fab": {
+      const tint = p.color;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h} r={Math.min(w, h) / 2} fill={INK} seed={seed} />
+          <SketchRect w={w} h={h} r={Math.min(w, h) / 2} fill={tint ?? INK} seed={seed} />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Glyph name={p.icon ?? "add"} size={Math.min(28, w * 0.46)} color="#fff" />
+            <Glyph name={p.icon ?? "add"} size={Math.min(28, w * 0.46)} color={tint ? readableOn(tint) : "#fff"} />
           </div>
         </div>
       );
     }
 
     case "extended-fab": {
+      const tint = p.color;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h} r={Math.min(18, h / 2)} fill={INK} seed={seed} />
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, color: "#fff", padding: "0 16px" }}>
-            <Glyph name={p.icon ?? "add"} size={Math.min(22, h * 0.4)} color="#fff" />
+          <SketchRect w={w} h={h} r={Math.min(18, h / 2)} fill={tint ?? INK} seed={seed} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 9, color: tint ? readableOn(tint) : "#fff", padding: "0 16px" }}>
+            <Glyph name={p.icon ?? "add"} size={Math.min(22, h * 0.4)} color={tint ? readableOn(tint) : "#fff"} />
             <span className="wf-label" style={{ fontSize: Math.min(14, h * 0.28), fontWeight: 700, whiteSpace: "nowrap" }}>
               {p.label || "New"}
             </span>
@@ -148,17 +173,19 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "split-button": {
+      const tint = p.color;
+      const ink = tint ?? INK;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h} r={Math.min(10, h * 0.3)} fill={PAPER} seed={seed} />
-          <div style={{ position: "absolute", top: 4, bottom: 4, right: 42, width: 1.2, background: INK, opacity: 0.7 }} />
+          <SketchRect w={w} h={h} r={Math.min(10, h * 0.3)} fill={PAPER} stroke={ink} seed={seed} />
+          <div style={{ position: "absolute", top: 4, bottom: 4, right: 42, width: 1.2, background: ink, opacity: 0.7 }} />
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", padding: "0 16px", paddingRight: 50 }}>
-            <span className="wf-label" style={{ fontSize: Math.min(14, h * 0.32), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <span className="wf-label" style={{ fontSize: Math.min(14, h * 0.32), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", color: ink }}>
               {p.label || "Split button"}
             </span>
           </div>
           <div style={{ position: "absolute", top: 0, bottom: 0, right: 8, width: 32, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Glyph name={p.icon ?? "arrow_drop_down"} size={20} />
+            <Glyph name={p.icon ?? "arrow_drop_down"} size={20} color={ink} />
           </div>
         </div>
       );
@@ -168,6 +195,9 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     case "button-group": {
       const items = p.items?.length ? p.items : ["One", "Two", "Three"];
       const selected = type === "segmented-button" ? p.selectedIndex ?? 0 : -1;
+      const tint = p.color;
+      const activeBg = tint ? soften(tint) : SOFT;
+      const activeInk = tint ? deepen(tint, 0.22) : INK;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <SketchRect w={w} h={h} r={Math.min(10, h * 0.3)} fill={PAPER} seed={seed} />
@@ -183,16 +213,17 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
                   justifyContent: "center",
                   gap: 4,
                   borderLeft: i > 0 ? `1.2px solid ${INK}` : "none",
-                  background: i === selected ? SOFT : "transparent",
+                  background: i === selected ? activeBg : "transparent",
                   borderRadius: 8,
                   margin: 2,
                   fontSize: Math.max(9, Math.min(12.5, h * 0.29)),
                   fontWeight: i === selected ? 700 : 400,
+                  color: i === selected ? activeInk : INK,
                   overflow: "hidden",
                   whiteSpace: "nowrap",
                 }}
               >
-                {i === selected && <Glyph name="check" size={Math.min(14, h * 0.33)} />}
+                {i === selected && <Glyph name="check" size={Math.min(14, h * 0.33)} color={activeInk} />}
                 <span className="wf-label">{item}</span>
               </div>
             ))}
@@ -202,17 +233,18 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "badge": {
+      const tint = p.color;
       if (p.variant === "dot") {
         return (
           <div style={{ position: "relative", width: "100%", height: "100%" }}>
-            <div style={{ position: "absolute", left: w / 2 - 5, top: h / 2 - 5, width: 10, height: 10, borderRadius: 10, background: INK }} />
+            <div style={{ position: "absolute", left: w / 2 - 5, top: h / 2 - 5, width: 10, height: 10, borderRadius: 10, background: tint ?? INK }} />
           </div>
         );
       }
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h} r={h / 2} fill={INK} seed={seed} strokeWidth={1.2} />
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: Math.max(9, Math.min(12, h * 0.46)), fontWeight: 700 }}>
+          <SketchRect w={w} h={h} r={h / 2} fill={tint ?? INK} seed={seed} strokeWidth={1.2} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: tint ? readableOn(tint) : "#fff", fontSize: Math.max(9, Math.min(12, h * 0.46)), fontWeight: 700 }}>
             {p.label ?? "12"}
           </div>
         </div>
@@ -220,6 +252,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "progress": {
+      const tint = p.color;
       if (p.variant === "circular") {
         const d = Math.min(w, h);
         const val = Math.max(0, Math.min(100, p.value ?? 60));
@@ -229,9 +262,9 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
           <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
             <svg width={d} height={d} viewBox={`0 0 ${d} ${d}`}>
               <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke={SOFT} strokeWidth={4} />
-              <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke={INK} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${(c * val) / 100} ${c}`} transform={`rotate(-90 ${d / 2} ${d / 2})`} />
+              <circle cx={d / 2} cy={d / 2} r={r} fill="none" stroke={tint ?? INK} strokeWidth={4} strokeLinecap="round" strokeDasharray={`${(c * val) / 100} ${c}`} transform={`rotate(-90 ${d / 2} ${d / 2})`} />
             </svg>
-            <span className="wf-label" style={{ position: "absolute", fontSize: Math.max(9, d * 0.18), fontWeight: 700 }}>{val}%</span>
+            <span className="wf-label" style={{ position: "absolute", fontSize: Math.max(9, d * 0.18), fontWeight: 700, color: tint ? deepen(tint, 0.15) : undefined }}>{val}%</span>
           </div>
         );
       }
@@ -241,7 +274,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
           <div style={{ position: "absolute", left: 0, right: 0, height: Math.max(6, h), top: (h - Math.max(6, h)) / 2 }}>
             <SketchRect w={w} h={Math.max(6, h)} r={h / 2} fill={SOFT} seed={seed} strokeWidth={1.1} />
             <div style={{ position: "absolute", left: 0, top: 0, width: `${val}%`, height: "100%" }}>
-              <SketchRect w={(w * val) / 100} h={Math.max(6, h)} r={h / 2} fill={INK} seed={seed + 2} strokeWidth={1.1} />
+              <SketchRect w={(w * val) / 100} h={Math.max(6, h)} r={h / 2} fill={tint ?? INK} seed={seed + 2} strokeWidth={1.1} />
             </div>
           </div>
         </div>
@@ -249,15 +282,17 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "snackbar": {
+      const tint = p.color;
+      const text = tint ? readableOn(tint) : "#fff";
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h} r={7} fill={INK} seed={seed} strokeWidth={1.2} />
-          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 16px", color: "#fff" }}>
-            {p.icon && <Glyph name={p.icon} size={Math.min(19, h * 0.36)} color="#fff" />}
+          <SketchRect w={w} h={h} r={7} fill={tint ?? INK} seed={seed} strokeWidth={1.2} />
+          <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", gap: 10, padding: "0 16px", color: text }}>
+            {p.icon && <Glyph name={p.icon} size={Math.min(19, h * 0.36)} color={text} />}
             <span className="wf-label" style={{ flex: 1, fontSize: Math.min(13, h * 0.26), whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {p.label || "Draft saved"}
             </span>
-            <span className="wf-label" style={{ fontSize: Math.min(12.5, h * 0.24), fontWeight: 700, textDecoration: "underline", color: "#fff" }}>
+            <span className="wf-label" style={{ fontSize: Math.min(12.5, h * 0.24), fontWeight: 700, textDecoration: "underline", color: text }}>
               {p.icon2 || "Undo"}
             </span>
           </div>
@@ -266,13 +301,15 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "tooltip": {
+      const tint = p.color;
+      const text = tint ? readableOn(tint) : "#fff";
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
-          <SketchRect w={w} h={h - 6} r={6} fill={INK} seed={seed} strokeWidth={1.2} />
+          <SketchRect w={w} h={h - 6} r={6} fill={tint ?? INK} seed={seed} strokeWidth={1.2} />
           <svg width={12} height={8} style={{ position: "absolute", left: 18, bottom: 0 }} viewBox="0 0 12 8">
-            <path d="M0 0 L12 0 L6 8 Z" fill={INK} />
+            <path d="M0 0 L12 0 L6 8 Z" fill={tint ?? INK} />
           </svg>
-          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: h - 6, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: Math.min(12, h * 0.28), padding: "0 8px" }}>
+          <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: h - 6, display: "flex", alignItems: "center", justifyContent: "center", color: text, fontSize: Math.min(12, h * 0.28), padding: "0 8px" }}>
             {p.label || "Tooltip"}
           </div>
         </div>
@@ -633,11 +670,12 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "checkbox": {
+      const tint = p.color;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", gap: 9 }}>
           <div style={{ position: "relative", width: 20, height: 20, flex: "none" }}>
-            <SketchRect w={20} h={20} r={3.5} fill={p.checked ? INK : PAPER} seed={seed} strokeWidth={1.3} />
-            {p.checked && <Glyph name="check" size={16} color="#fff" style={{ position: "absolute", left: 2, top: 2 }} />}
+            <SketchRect w={20} h={20} r={3.5} fill={p.checked ? (tint ?? INK) : PAPER} seed={seed} strokeWidth={1.3} />
+            {p.checked && <Glyph name="check" size={16} color={tint ? readableOn(tint) : "#fff"} style={{ position: "absolute", left: 2, top: 2 }} />}
           </div>
           <span className="wf-label" style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.label || "Checkbox"}</span>
         </div>
@@ -645,11 +683,12 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "radio": {
+      const tint = p.color;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", gap: 9 }}>
           <div style={{ position: "relative", width: 20, height: 20, flex: "none" }}>
             <SketchCircle w={20} h={20} fill={PAPER} seed={seed} strokeWidth={1.3} />
-            {p.checked && <div style={{ position: "absolute", left: 5.5, top: 5.5, width: 9, height: 9, borderRadius: 9, background: INK }} />}
+            {p.checked && <div style={{ position: "absolute", left: 5.5, top: 5.5, width: 9, height: 9, borderRadius: 9, background: tint ?? INK }} />}
           </div>
           <span className="wf-label" style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.label || "Option"}</span>
         </div>
@@ -658,6 +697,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
 
     case "switch": {
       const on = p.checked !== false;
+      const tint = p.color;
       const sw = 42;
       const sh = 22;
       const sx = Math.min(w - sw, Math.max(0, w * 0.55));
@@ -665,8 +705,8 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center" }}>
           <span className="wf-label" style={{ fontSize: 13, maxWidth: sx - 10, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.label || "Switch"}</span>
           <div style={{ position: "absolute", left: sx, top: h / 2 - sh / 2, width: sw, height: sh }}>
-            <SketchRect w={sw} h={sh} r={sh / 2} fill={on ? INK : PAPER} seed={seed} strokeWidth={1.3} />
-            <div style={{ position: "absolute", left: on ? sw - 18 : 3, top: 3, width: 16, height: 16, borderRadius: 8, background: on ? "#fff" : INK }} />
+            <SketchRect w={sw} h={sh} r={sh / 2} fill={on ? (tint ?? INK) : PAPER} seed={seed} strokeWidth={1.3} />
+            <div style={{ position: "absolute", left: on ? sw - 18 : 3, top: 3, width: 16, height: 16, borderRadius: 8, background: on ? (tint ? readableOn(tint) : "#fff") : (tint ?? INK) }} />
           </div>
         </div>
       );
@@ -674,16 +714,18 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
 
     case "chips": {
       const items = p.items?.length ? p.items : ["Filter", "Popular", "Nearby"];
+      const tint = p.color;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%", display: "flex", alignItems: "center", gap: 8, overflow: "hidden" }}>
           {items.map((it, i) => {
             const on = i === (p.selectedIndex ?? 0);
             const cw = Math.min(w, 28 + it.length * 7.2);
+            const chipInk = on && tint ? deepen(tint, 0.22) : INK;
             return (
               <div key={i} style={{ position: "relative", height: h, width: cw, flex: "none", borderRadius: h / 2 }}>
-                <SketchRect w={cw} h={h} r={h / 2} fill={on ? SOFT : PAPER} seed={seed + i} strokeWidth={1.25} />
-                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 8px" }}>
-                  {on && <Glyph name="check" size={Math.min(14, h * 0.4)} />}
+                <SketchRect w={cw} h={h} r={h / 2} fill={on ? (tint ? soften(tint) : SOFT) : PAPER} stroke={on && tint ? tint : INK} seed={seed + i} strokeWidth={1.25} />
+                <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "0 8px", color: chipInk }}>
+                  {on && <Glyph name="check" size={Math.min(14, h * 0.4)} color={chipInk} />}
                   <span className="wf-label" style={{ fontSize: Math.min(12, h * 0.34), fontWeight: on ? 700 : 400, whiteSpace: "nowrap" }}>{it}</span>
                 </div>
               </div>
@@ -772,7 +814,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
       const v = p.variant ?? "body";
       const sizes: Record<string, number> = { h1: 28, h2: 22, h3: 17, body: 15, muted: 14, link: 14, label: 12 };
       const weights: Record<string, number> = { h1: 700, h2: 700, h3: 700, body: 400, muted: 400, link: 700, label: 700 };
-      const color = v === "muted" ? MUTED : INK;
+      const color = p.color ?? (v === "muted" ? MUTED : INK);
       return (
         <div
           className="wf-label"
@@ -923,13 +965,13 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "rectangle":
-      return <SketchRect w={w} h={h} r={2} fill={PAPER} seed={seed} />;
+      return <SketchRect w={w} h={h} r={2} fill={p.color ?? PAPER} seed={seed} />;
 
     case "rounded-rect":
-      return <SketchRect w={w} h={h} r={Math.min(18, Math.min(w, h) * 0.25)} fill={PAPER} seed={seed} />;
+      return <SketchRect w={w} h={h} r={Math.min(18, Math.min(w, h) * 0.25)} fill={p.color ?? PAPER} seed={seed} />;
 
     case "circle":
-      return <SketchCircle w={w} h={h} fill={PAPER} seed={seed} />;
+      return <SketchCircle w={w} h={h} fill={p.color ?? PAPER} seed={seed} />;
 
     case "arrow":
       return <SketchArrow w={w} h={h} seed={seed} />;

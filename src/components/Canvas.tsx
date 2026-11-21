@@ -313,8 +313,8 @@ export function Canvas() {
     if (!spec) return;
     const lx = world.x - frame.x;
     const ly = world.y - frame.y;
-    const defW = Math.min(spec.defaultW, frame.w - 32);
-    const defH = Math.min(spec.defaultH, frame.h - 32);
+    const defW = Math.min(state.armed.w ?? spec.defaultW, frame.w - 32);
+    const defH = Math.min(state.armed.h ?? spec.defaultH, frame.h - 32);
     interaction.current = {
       kind: "armed",
       frameId: frame.id,
@@ -451,8 +451,15 @@ export function Canvas() {
     e.stopPropagation();
     const state = useStore.getState();
     if (state.armed) return;
-    state.selectFrame(frame.id);
-    state.setPaletteOpen(true);
+    const world = pointerToWorld(e.clientX, e.clientY);
+    if (!world) return;
+    const spec = SPECS.text;
+    const w = Math.min(spec.defaultW, frame.w - 32);
+    const h = Math.min(spec.defaultH, frame.h - 32);
+    const x = clamp(snap(world.x - frame.x - w / 2, 4), 4, Math.max(4, frame.w - w - 4));
+    const y = clamp(snap(world.y - frame.y - h / 2, 4), 4, Math.max(4, frame.h - h - 4));
+    const el = state.insertElement(frame.id, "text", x, y, w, h, { label: "" });
+    if (el) onStartEdit(frame, el);
   };
 
   const onStartEdit = (frame: Frame, el: NapkinElement) => {
@@ -487,6 +494,13 @@ export function Canvas() {
     beginMarquee(world, e.shiftKey);
   };
 
+  const onCanvasDoubleClick = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target !== viewportRef.current && !target.classList.contains("canvas-world")) return;
+    if (useStore.getState().armed) return;
+    useStore.getState().setPaletteOpen(true);
+  };
+
   // Single set of window listeners for all gestures
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -502,8 +516,8 @@ export function Canvas() {
           );
           if (frame) {
             const spec = SPECS[armedNow.type];
-            const w = Math.min(spec.defaultW, frame.w - 32);
-            const h = Math.min(spec.defaultH, frame.h - 32);
+            const w = Math.min(armedNow.w ?? spec.defaultW, frame.w - 32);
+            const h = Math.min(armedNow.h ?? spec.defaultH, frame.h - 32);
             setGhost({
               frameId: frame.id,
               x: clamp(world.x - frame.x - w / 2, 8, frame.w - w - 8),
@@ -645,8 +659,9 @@ export function Canvas() {
       }
       if (act?.kind === "armed") {
         const frame = state.project.frames.find((f) => f.id === act.frameId);
+        const armedNow = state.armed;
         if (frame) {
-          const spec = SPECS[state.armed?.type ?? "rectangle"];
+          const spec = SPECS[armedNow?.type ?? "rectangle"];
           let x;
           let y;
           let w;
@@ -657,8 +672,8 @@ export function Canvas() {
             w = Math.abs(act.current.x - act.start.x);
             h = Math.abs(act.current.y - act.start.y);
           } else {
-            w = Math.min(spec.defaultW, frame.w - 32);
-            h = Math.min(spec.defaultH, frame.h - 32);
+            w = Math.min(armedNow?.w ?? spec.defaultW, frame.w - 32);
+            h = Math.min(armedNow?.h ?? spec.defaultH, frame.h - 32);
             x = act.start.x - w / 2;
             y = act.start.y - h / 2;
           }
@@ -666,12 +681,15 @@ export function Canvas() {
           y = clamp(snap(y, 4), 4, Math.max(4, frame.h - h - 4));
           w = Math.max(16, Math.min(w, frame.w - x - 4));
           h = Math.max(8, Math.min(h, frame.h - y - 4));
-          const type = state.armed?.type;
+          const type = armedNow?.type;
           if (type) {
-            const extra = state.armed?.variant ? { variant: state.armed.variant } : undefined;
-            state.insertElement(frame.id, type, x, y, w, h, extra);
+            const extra = {
+              ...(armedNow?.props ?? {}),
+              ...(armedNow?.variant ? { variant: armedNow.variant } : {}),
+            };
+            state.insertElement(frame.id, type, x, y, w, h, Object.keys(extra).length ? extra : undefined);
             if (!e.shiftKey) setArmed(null);
-            else state.setArmed(state.armed);
+            else state.setArmed(armedNow);
           }
         }
         setGhost(null);
@@ -717,6 +735,7 @@ export function Canvas() {
       className={`canvas-viewport ${spaceDown ? "is-space" : ""} ${interactionBusy ? "is-busy" : ""} ${tool === "hand" ? "is-hand" : ""} ${armed ? "is-armed" : ""}`}
       ref={viewportRef}
       onPointerDown={onCanvasBackgroundDown}
+      onDoubleClick={onCanvasDoubleClick}
       onPointerMove={(e) => {
         lastPointer.current = { x: e.clientX, y: e.clientY };
       }}
