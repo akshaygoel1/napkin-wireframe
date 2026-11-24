@@ -10,11 +10,14 @@ import {
   Square,
   Tablet,
   Trash2,
+  Upload,
 } from "lucide-react";
+import { useState } from "react";
 import { SPECS } from "../data/components";
 import { useStore } from "../store";
 import type { ElementType, Frame, Preset } from "../types";
 import { canvasApi } from "../utils/canvasApi";
+import { importImageFiles } from "../utils/images";
 import { SketchProvider, Glyph } from "../components/Sketch";
 import { Wireframe } from "../components/Wireframe";
 import { FrameThumb } from "./FrameThumb";
@@ -77,6 +80,19 @@ function PreviewTile({
 
 export function ImageFlyout() {
   const setFlyout = useStore((s) => s.setFlyout);
+  const [importing, setImporting] = useState(false);
+  const handleImport = async (files: File[]) => {
+    if (!files.length) return;
+    setImporting(true);
+    try {
+      await importImageFiles(files);
+    } catch {
+      useStore.getState().showToast("That image could not be read");
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <aside className="flyout media-flyout" aria-label="Images and media">
       <div className="flyout-head">
@@ -88,9 +104,29 @@ export function ImageFlyout() {
           <ChevronLeft size={17} />
         </button>
       </div>
-      <p className="flyout-intro">Low-fi placeholders that keep the conversation about layout, not pixels.</p>
+      <p className="flyout-intro">Import a screenshot to annotate a real app, or use a low-fi placeholder to keep the conversation about layout.</p>
       <div className="flyout-scroll">
-        <div className="flyout-section-label">Media</div>
+        <div className="flyout-section-label">Import</div>
+        <label className={`image-drop ${importing ? "is-busy" : ""}`}>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="file-input-hidden"
+            onChange={(e) => {
+              const files = Array.from(e.target.files ?? []);
+              e.target.value = "";
+              void handleImport(files);
+            }}
+          />
+          <span className="image-drop-icon"><Upload size={19} /></span>
+          <span className="image-drop-text">
+            <b>{importing ? "Importing…" : "Import a screenshot"}</b>
+            <small>PNG, JPG or WebP · or drop it on the canvas</small>
+          </span>
+        </label>
+
+        <div className="flyout-section-label">Placeholders</div>
         <div className="media-grid">
           <PreviewTile type="image" title="Image" hint="Photo or illustration" />
           <PreviewTile type="video" title="Video" hint="Player with controls" />
@@ -111,7 +147,7 @@ export function ImageFlyout() {
         </div>
       </div>
       <div className="flyout-foot">
-        Click a placeholder, then click or drag on the canvas. Hold <kbd>Shift</kbd> to keep placing.
+        Click a placeholder, then click or drag on the canvas. Imported images can be cropped from the inspector.
       </div>
     </aside>
   );

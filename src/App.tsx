@@ -5,6 +5,7 @@ import { useStore } from "./store";
 import { AboutDialog } from "./ui/AboutDialog";
 import { BottomBar } from "./ui/BottomBar";
 import { ComponentLibrary } from "./ui/ComponentLibrary";
+import { CropDialog } from "./ui/CropDialog";
 import { ElementContextMenu } from "./ui/ElementContextMenu";
 import { ExportDialog } from "./ui/ExportDialog";
 import { FramesFlyout, ImageFlyout, MarkupFlyout } from "./ui/Flyouts";
@@ -43,7 +44,7 @@ function useGlobalShortcuts() {
         return;
       }
 
-      const dialogOpen = state.exportOpen || state.shortcutsOpen || state.newFrameOpen || state.aboutOpen;
+      const dialogOpen = state.exportOpen || state.shortcutsOpen || state.newFrameOpen || state.aboutOpen || !!state.cropId;
       if (dialogOpen) return;
       if (typing) return;
 
@@ -304,6 +305,7 @@ export function App() {
       {shortcutsOpen && <ShortcutsDialog />}
       {newFrameOpen && <NewFrameDialog />}
       {aboutOpen && <AboutDialog />}
+      <CropDialog />
       <ElementContextMenu />
       <Toast />
     </div>

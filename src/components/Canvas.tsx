@@ -5,6 +5,7 @@ import { useStore } from "../store";
 import type { Frame, NapkinElement, Point } from "../types";
 import { canvasApi, frameRegistry } from "../utils/canvasApi";
 import { clamp, frameBlockRect, projectBounds, snap } from "../utils/geometry";
+import { imageFilesFromDataTransfer, importImageFiles } from "../utils/images";
 import { FrameView } from "./FrameView";
 import type { ResizeDir } from "./ElementView";
 
@@ -501,6 +502,23 @@ export function Canvas() {
     useStore.getState().setPaletteOpen(true);
   };
 
+  const onCanvasDrop = (e: React.DragEvent) => {
+    const files = imageFilesFromDataTransfer(e.dataTransfer);
+    if (!files.length) return;
+    e.preventDefault();
+    const world = pointerToWorld(e.clientX, e.clientY);
+    let drop: { frameId: string; x: number; y: number } | undefined;
+    if (world) {
+      const frame = frames.find(
+        (f) => world.x >= f.x && world.x <= f.x + f.w && world.y >= f.y && world.y <= f.y + f.h,
+      );
+      if (frame) drop = { frameId: frame.id, x: world.x - frame.x, y: world.y - frame.y };
+    }
+    void importImageFiles(files, { drop }).catch(() =>
+      useStore.getState().showToast("That image could not be read"),
+    );
+  };
+
   // Single set of window listeners for all gestures
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
@@ -736,6 +754,13 @@ export function Canvas() {
       ref={viewportRef}
       onPointerDown={onCanvasBackgroundDown}
       onDoubleClick={onCanvasDoubleClick}
+      onDragOver={(e) => {
+        if (Array.from(e.dataTransfer.types).includes("Files")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+        }
+      }}
+      onDrop={onCanvasDrop}
       onPointerMove={(e) => {
         lastPointer.current = { x: e.clientX, y: e.clientY };
       }}

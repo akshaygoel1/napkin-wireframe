@@ -3,6 +3,7 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Copy,
+  Crop,
   Layers,
   RefreshCw,
   Trash2,
@@ -23,6 +24,7 @@ export function ElementContextMenu() {
   const selection = useStore((s) => s.selection);
   const project = useStore((s) => s.project);
   const setContextMenu = useStore((s) => s.setContextMenu);
+  const setCropId = useStore((s) => s.setCropId);
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: 0, top: 0 });
 
@@ -155,6 +157,16 @@ export function ElementContextMenu() {
       </div>
 
       <div className="el-menu-section el-menu-actions">
+        {single?.type === "image" && single.props.src && (
+          <button
+            onClick={() => {
+              setCropId(single.id);
+              close();
+            }}
+          >
+            <Crop size={14} /> Crop image
+          </button>
+        )}
         <button
           onClick={() => {
             useStore.getState().duplicateSelection();

@@ -18,7 +18,8 @@ const MOST_USED: ComponentSpec["type"][] = [
   "circle",
   "line",
   "checkbox",
-  "card",
+  "radio",
+  "switch",
 ];
 
 const VARIANTS: Partial<Record<ComponentSpec["type"], string[]>> = {

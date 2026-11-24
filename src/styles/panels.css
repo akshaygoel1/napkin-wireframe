@@ -439,6 +439,67 @@
   white-space: nowrap;
 }
 
+.image-drop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin: 1px 0 12px;
+  padding: 12px;
+  border: 1.5px dashed rgba(240, 100, 60, 0.42);
+  border-radius: var(--radius-card);
+  background: var(--accent-tint);
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color 0.13s var(--ease),
+    background 0.13s var(--ease);
+}
+
+.image-drop:hover {
+  border-color: var(--accent);
+  background: #fff4ee;
+}
+
+.image-drop.is-busy {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.image-drop-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 9px;
+  background: #fff;
+  color: var(--accent-deep);
+  box-shadow: 0 2px 5px rgba(38, 35, 43, 0.08);
+}
+
+.image-drop-text {
+  min-width: 0;
+}
+
+.image-drop-text b {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.image-drop-text small {
+  display: block;
+  margin-top: 1px;
+  color: var(--muted);
+  font-size: 9.5px;
+}
+
+.file-input-hidden {
+  display: none;
+}
+
 .markup-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -1278,6 +1339,61 @@
 .insp-mini-label {
   color: var(--muted);
   font-size: 9.5px;
+}
+
+.insp-image-preview {
+  position: relative;
+  width: 100%;
+  max-height: 150px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background:
+    linear-gradient(45deg, #f3f1ec 25%, transparent 25%),
+    linear-gradient(-45deg, #f3f1ec 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #f3f1ec 75%),
+    linear-gradient(-45deg, transparent 75%, #f3f1ec 75%);
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+  background-size: 16px 16px;
+}
+
+.insp-image-preview img {
+  display: block;
+  width: 100%;
+  max-height: 150px;
+  object-fit: contain;
+}
+
+.image-actions {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.image-actions .btn {
+  flex: 1;
+  height: 29px;
+  padding: 0 8px;
+  font-size: 10px;
+}
+
+.image-fit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.image-remove {
+  margin-top: 7px;
+  color: var(--danger);
+  font-size: 9.5px;
+}
+
+.image-remove:hover {
+  color: var(--danger);
+  text-decoration: underline;
 }
 
 .insp-hint {

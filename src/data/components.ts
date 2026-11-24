@@ -230,13 +230,13 @@ export const COMPONENTS: ComponentSpec[] = [
     type: "text-field", name: "Text field", group: "Text inputs", icon: "text_fields",
     aliases: ["input", "field", "form", "textbox"],
     platforms: ["both"], defaultW: 320, defaultH: 56,
-    defaults: { label: "Label", placeholder: "Input text", variant: "outlined", icon: "" },
+    defaults: { label: "Label", showLabel: false, placeholder: "Input text", variant: "outlined", icon: "" },
   },
   {
     type: "text-area", name: "Text area", group: "Text inputs", icon: "notes",
     aliases: ["textarea", "input", "message", "form"],
     platforms: ["both"], defaultW: 320, defaultH: 104,
-    defaults: { label: "Message", placeholder: "Write something…" },
+    defaults: { label: "Message", showLabel: false, placeholder: "Write something…" },
   },
 
   // -------------------------------------------------------------- Primitives

@@ -770,6 +770,7 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
 
     case "text-field": {
       const outlined = (p.variant ?? "outlined") === "outlined";
+      const showLabel = p.showLabel === true;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           {outlined ? (
@@ -779,12 +780,25 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
               <SketchLine w={w} h={2} seed={seed + 1} strokeWidth={1.3} style={{ top: h - 2 }} />
             </div>
           )}
-          <div style={{ position: "absolute", left: 13, top: outlined ? 9 : 8 }}>
-            <span className="wf-label" style={{ fontSize: 9.5, color: MUTED, background: outlined ? PAPER : SOFT, padding: "0 3px" }}>
-              {p.label || "Label"}
-            </span>
-          </div>
-          <div style={{ position: "absolute", left: p.icon ? 40 : 13, right: 14, top: 26, display: "flex", alignItems: "center", gap: 8 }}>
+          {showLabel && (
+            <div style={{ position: "absolute", left: 13, top: outlined ? 9 : 8 }}>
+              <span className="wf-label" style={{ fontSize: 9.5, color: MUTED, background: outlined ? PAPER : SOFT, padding: "0 3px" }}>
+                {p.label || "Label"}
+              </span>
+            </div>
+          )}
+          <div
+            style={{
+              position: "absolute",
+              left: p.icon ? 40 : 13,
+              right: 14,
+              top: showLabel ? 26 : 0,
+              bottom: 0,
+              display: "flex",
+              alignItems: showLabel ? "flex-start" : "center",
+              gap: 8,
+            }}
+          >
             {p.icon && <Glyph name={p.icon} size={18} color={MUTED} />}
             <span className="wf-label" style={{ fontSize: 13, color: MUTED, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
               {p.placeholder || "Input text"}
@@ -796,13 +810,16 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "text-area": {
+      const showLabel = p.showLabel === true;
       return (
         <div style={{ position: "relative", width: "100%", height: "100%" }}>
           <SketchRect w={w} h={h} r={8} fill={PAPER} seed={seed} strokeWidth={1.4} />
-          <span className="wf-label" style={{ position: "absolute", left: 11, top: -2, fontSize: 9.5, color: MUTED, background: PAPER, padding: "0 4px" }}>{p.label || "Message"}</span>
-          <span className="wf-label" style={{ position: "absolute", left: 13, top: 16, fontSize: 13, color: MUTED }}>{p.placeholder || "Write something…"}</span>
-          <div style={{ position: "absolute", left: 13, right: 24, top: 40, height: Math.max(10, h - 58) }}>
-            <Squiggles w={w - 40} h={Math.max(10, h - 58)} lines={Math.min(3, Math.max(1, Math.floor((h - 58) / 13)))} seed={seed + 3} />
+          {showLabel && (
+            <span className="wf-label" style={{ position: "absolute", left: 11, top: -2, fontSize: 9.5, color: MUTED, background: PAPER, padding: "0 4px" }}>{p.label || "Message"}</span>
+          )}
+          <span className="wf-label" style={{ position: "absolute", left: 13, top: showLabel ? 16 : 12, fontSize: 13, color: MUTED }}>{p.placeholder || "Write something…"}</span>
+          <div style={{ position: "absolute", left: 13, right: 24, top: showLabel ? 40 : 34, height: Math.max(10, h - (showLabel ? 58 : 50)) }}>
+            <Squiggles w={w - 40} h={Math.max(10, h - (showLabel ? 58 : 50))} lines={Math.min(3, Math.max(1, Math.floor((h - (showLabel ? 58 : 50)) / 13)))} seed={seed + 3} />
           </div>
           <SketchSegment x1={w - 20} y1={h - 6} x2={w - 6} y2={h - 20} seed={seed + 4} strokeWidth={1.1} opacity={0.6} />
           <SketchSegment x1={w - 13} y1={h - 6} x2={w - 6} y2={h - 13} seed={seed + 5} strokeWidth={1.1} opacity={0.6} />
@@ -844,6 +861,18 @@ export function Wireframe({ type, w, h, p, seed }: WProps) {
     }
 
     case "image":
+      if (p.src) {
+        return (
+          <div style={{ position: "absolute", inset: 0, overflow: "hidden", borderRadius: 3, background: SOFTER }}>
+            <img
+              src={p.src}
+              alt={p.label ?? ""}
+              draggable={false}
+              style={{ width: "100%", height: "100%", objectFit: p.fit ?? "cover", display: "block", userSelect: "none" }}
+            />
+          </div>
+        );
+      }
       return <ImagePlaceholder w={w} h={h} seed={seed} r={4} />;
 
     case "avatar": {

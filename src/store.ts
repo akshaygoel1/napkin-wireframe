@@ -39,6 +39,7 @@ interface StoreState {
   sketchiness: number;
   cleanExport: boolean;
   inspectorOpen: boolean;
+  cropId: string | null;
   toast: { id: number; text: string; action?: string; onAction?: () => void } | null;
   recents: string[];
   favorites: string[];
@@ -95,6 +96,7 @@ interface StoreState {
   setTool: (tool: "select" | "hand") => void;
   setArmed: (armed: { type: ElementType; variant?: string; props?: Partial<ElementProps>; w?: number; h?: number } | null) => void;
   setContextMenu: (menu: { x: number; y: number } | null) => void;
+  setCropId: (id: string | null) => void;
   setPaletteOpen: (open: boolean, seed?: string) => void;
   setFlyout: (flyout: Flyout) => void;
   setExportOpen: (open: boolean, frameFilter?: string[] | null) => void;
@@ -222,6 +224,7 @@ export const useStore = create<StoreState>()(
     sketchiness: prefs.sketchiness,
     cleanExport: false,
     inspectorOpen: true,
+    cropId: null,
     toast: null,
     recents: prefs.recents,
     favorites: prefs.favorites,
@@ -610,6 +613,7 @@ export const useStore = create<StoreState>()(
         }
       }),
     setContextMenu: (menu) => set((s) => { s.contextMenu = menu; }),
+    setCropId: (id) => set((s) => { s.cropId = id; }),
     setPaletteOpen: (open, seed = "") =>
       set((s) => {
         s.paletteOpen = open;

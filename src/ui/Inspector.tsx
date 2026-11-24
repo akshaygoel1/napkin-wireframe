@@ -10,6 +10,7 @@ import {
   ArrowDownToLine,
   ArrowUpToLine,
   Copy,
+  Crop,
   Frame as FrameIcon,
   Grid3X3,
   Layers,
@@ -33,6 +34,7 @@ import { clamp } from "../utils/geometry";
 import { supportsColor } from "../utils/color";
 import { Glyph } from "../components/Sketch";
 import { ColorField } from "./ColorField";
+import { ImageImportButton } from "./ImageImport";
 
 const VARIANT_OPTIONS: Partial<Record<ElementType, string[]>> = {
   button: ["filled", "tonal", "outlined", "text", "elevated"],
@@ -243,9 +245,11 @@ function ElementInspector({ el }: { el: NapkinElement }) {
   const reorder = useStore((s) => s.reorder);
   const reSeedSelection = useStore((s) => s.reSeedSelection);
   const swapElement = useStore((s) => s.swapElement);
+  const setCropId = useStore((s) => s.setCropId);
   const variants = VARIANT_OPTIONS[el.type];
   const iconSlots = ICON_SLOTS[el.type] ?? [];
   const hasItems = Array.isArray(el.props.items);
+  const isTextInput = el.type === "text-field" || el.type === "text-area";
   const hasLabel = el.props.label !== undefined || spec.defaults.label !== undefined || ["text", "paragraph", "sticky", "callout"].includes(el.type);
   const siblings = COMPONENTS.filter((c) => c.group === spec.group && c.type !== el.type);
   const labelFor = useMemo(() => {
@@ -298,15 +302,71 @@ function ElementInspector({ el }: { el: NapkinElement }) {
         )}
       </Section>
 
+      {el.type === "image" && (
+        <Section title="Image">
+          {el.props.src ? (
+            <>
+              <div className="insp-image-preview">
+                <img src={el.props.src} alt="" />
+              </div>
+              <div className="image-actions">
+                <button className="btn btn-ghost" onClick={() => setCropId(el.id)}>
+                  <Crop size={14} /> Crop
+                </button>
+                <ImageImportButton elementId={el.id} label="Replace" />
+              </div>
+              <div className="image-fit">
+                <span className="insp-mini-label">Fit</span>
+                <div className="seg-small">
+                  <button
+                    className={(el.props.fit ?? "cover") === "cover" ? "active" : ""}
+                    onClick={() => updateProps(el.id, { fit: "cover" })}
+                  >
+                    Cover
+                  </button>
+                  <button
+                    className={el.props.fit === "contain" ? "active" : ""}
+                    onClick={() => updateProps(el.id, { fit: "contain" })}
+                  >
+                    Contain
+                  </button>
+                </div>
+              </div>
+              <button className="link-btn image-remove" onClick={() => updateProps(el.id, { src: undefined })}>
+                Remove image
+              </button>
+            </>
+          ) : (
+            <>
+              <ImageImportButton elementId={el.id} label="Import image" />
+              <div className="insp-hint">Import a screenshot, then crop it here or from the right-click menu.</div>
+            </>
+          )}
+          <div className="insp-hint">Images are stored in this browser only.</div>
+        </Section>
+      )}
+
       {hasLabel && (
         <Section title="Content">
-          <TextField
-            label={labelFor}
-            value={el.props.label ?? ""}
-            placeholder={spec.defaults.label ?? "Type something"}
-            onCommit={(label) => updateProps(el.id, { label })}
-          />
-          {(el.type === "text-field" || el.type === "text-area" || el.type === "search-bar") && (
+          {isTextInput && (
+            <label className="toggle-row">
+              <span>Show label</span>
+              <input
+                type="checkbox"
+                checked={!!el.props.showLabel}
+                onChange={(e) => updateProps(el.id, { showLabel: e.target.checked })}
+              />
+            </label>
+          )}
+          {(!isTextInput || el.props.showLabel) && (
+            <TextField
+              label={labelFor}
+              value={el.props.label ?? ""}
+              placeholder={spec.defaults.label ?? "Type something"}
+              onCommit={(label) => updateProps(el.id, { label })}
+            />
+          )}
+          {(isTextInput || el.type === "search-bar") && (
             <TextField
               label="Placeholder"
               value={el.props.placeholder ?? ""}

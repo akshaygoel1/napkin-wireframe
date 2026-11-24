@@ -81,6 +81,12 @@ export interface ElementProps {
   placeholder?: string;
   /** One contextual colour per element. Omitted means the default ink look. */
   color?: string;
+  /** Imported image data. When present the image element renders this instead of the placeholder. */
+  src?: string;
+  /** How an imported image fills its element box. */
+  fit?: "cover" | "contain";
+  /** Text field / text area: show the floating label. Off by default. */
+  showLabel?: boolean;
 }
 
 export interface NapkinElement {
