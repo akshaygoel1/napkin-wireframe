@@ -2,6 +2,7 @@ import { Copy, Pencil, Trash2 } from "lucide-react";
 import { SPECS } from "../data/components";
 import { useStore } from "../store";
 import type { Frame, NapkinElement } from "../types";
+import { editTarget } from "../utils/content";
 import { Wireframe } from "./Wireframe";
 
 export type ResizeDir = "nw" | "n" | "ne" | "e" | "se" | "s" | "sw" | "w";
@@ -25,12 +26,13 @@ export function ElementView({
   onResizeStart,
   onStartEdit,
 }: {
-  frame: Frame;
+  /** Null for free canvas objects such as imported images. */
+  frame: Frame | null;
   el: NapkinElement;
   zoom: number;
-  onPointerDown: (e: React.PointerEvent, frame: Frame, el: NapkinElement) => void;
-  onResizeStart: (e: React.PointerEvent, frame: Frame, el: NapkinElement, dir: ResizeDir) => void;
-  onStartEdit: (frame: Frame, el: NapkinElement) => void;
+  onPointerDown: (e: React.PointerEvent, frame: Frame | null, el: NapkinElement) => void;
+  onResizeStart: (e: React.PointerEvent, frame: Frame | null, el: NapkinElement, dir: ResizeDir) => void;
+  onStartEdit: (el: NapkinElement, frame: Frame | null) => void;
 }) {
   const selected = useStore((s) => s.selection.includes(el.id));
   const single = useStore((s) => s.selection.length === 1 && s.selection[0] === el.id);
@@ -39,6 +41,7 @@ export function ElementView({
   const removeElements = useStore((s) => s.removeElements);
   const spec = SPECS[el.type];
   const markup = ["sticky", "callout", "arrow", "number", "hotspot"].includes(el.type);
+  const target = editTarget(el);
   const inv = 1 / Math.max(0.1, zoom);
 
   return (
@@ -59,12 +62,12 @@ export function ElementView({
         e.preventDefault();
         e.stopPropagation();
         const state = useStore.getState();
-        if (!state.selection.includes(el.id)) state.selectElements([el.id], frame.id);
+        if (!state.selection.includes(el.id)) state.selectElements([el.id], frame?.id ?? null);
         state.setContextMenu({ x: e.clientX, y: e.clientY });
       }}
       onDoubleClick={(e) => {
         e.stopPropagation();
-        onStartEdit(frame, el);
+        if (target) onStartEdit(el, frame);
       }}
     >
       <div className="wf-root" style={{ position: "absolute", inset: 0 }}>
@@ -82,16 +85,18 @@ export function ElementView({
                 {spec?.name ?? el.type}
               </div>
               <div className="sel-toolbar" onPointerDown={(e) => e.stopPropagation()}>
-                <button
-                  className="sel-tool"
-                  title="Edit label (double-click)"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onStartEdit(frame, el);
-                  }}
-                >
-                  <Pencil />
-                </button>
+                {target && (
+                  <button
+                    className="sel-tool"
+                    title={`${target.title} (double-click)`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onStartEdit(el, frame);
+                    }}
+                  >
+                    <Pencil />
+                  </button>
+                )}
                 <button
                   className="sel-tool"
                   title="Duplicate (⌘D)"

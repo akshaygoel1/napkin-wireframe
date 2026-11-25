@@ -19,7 +19,10 @@ export function CropDialog() {
   const found = cropId
     ? project.frames
         .map((frame) => ({ frame, el: frame.elements.find((e) => e.id === cropId) }))
-        .find((entry) => entry.el)
+        .find((entry) => entry.el) ?? {
+        frame: null,
+        el: project.images.find((e) => e.id === cropId),
+      }
     : null;
   const el = found?.el ?? null;
   const src = el?.type === "image" ? el.props.src : undefined;
@@ -113,20 +116,25 @@ export function CropDialog() {
         h: Math.round(box.h * natural.h),
       });
       const state = useStore.getState();
-      const frame = state.project.frames.find((f) => f.elements.some((e) => e.id === el.id));
-      const live = frame?.elements.find((e) => e.id === el.id);
-      if (!frame || !live) {
+      const free = state.project.images.find((e) => e.id === el.id);
+      const frame = free
+        ? null
+        : state.project.frames.find((f) => f.elements.some((e) => e.id === el.id)) ?? null;
+      const live = free ?? frame?.elements.find((e) => e.id === el.id);
+      if (!live) {
         setCropId(null);
         return;
       }
       const aspect = cropped.width / cropped.height;
       let w = Math.max(24, live.w);
       let h = Math.max(24, Math.round(w / aspect));
-      const maxW = Math.max(24, frame.w - live.x - 8);
-      const maxH = Math.max(24, frame.h - live.y - 8);
-      const scale = Math.min(1, maxW / w, maxH / h);
-      w = Math.max(16, Math.round(w * scale));
-      h = Math.max(16, Math.round(h * scale));
+      if (frame) {
+        const maxW = Math.max(24, frame.w - live.x - 8);
+        const maxH = Math.max(24, frame.h - live.y - 8);
+        const scale = Math.min(1, maxW / w, maxH / h);
+        w = Math.max(16, Math.round(w * scale));
+        h = Math.max(16, Math.round(h * scale));
+      }
       state.snapshot();
       state.updateProps(el.id, { src: cropped.src }, false);
       state.updateElement(el.id, { w, h }, false);

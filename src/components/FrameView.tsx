@@ -1,8 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Copy, Download, MoreHorizontal, PencilLine, Trash2, X } from "lucide-react";
 import { useStore } from "../store";
 import type { Frame, NapkinElement } from "../types";
-import { shellMetrics } from "../utils/geometry";
+import { clamp, shellMetrics } from "../utils/geometry";
 import { frameRegistry } from "../utils/canvasApi";
 import { ElementView, type ResizeDir } from "./ElementView";
 import { Glyph } from "./Sketch";
@@ -28,9 +29,9 @@ export function FrameView({
   frame: Frame;
   zoom: number;
   onArtboardPointerDown: (e: React.PointerEvent, frame: Frame) => void;
-  onElementPointerDown: (e: React.PointerEvent, frame: Frame, el: NapkinElement) => void;
-  onResizeStart: (e: React.PointerEvent, frame: Frame, el: NapkinElement, dir: ResizeDir) => void;
-  onStartEdit: (frame: Frame, el: NapkinElement) => void;
+  onElementPointerDown: (e: React.PointerEvent, frame: Frame | null, el: NapkinElement) => void;
+  onResizeStart: (e: React.PointerEvent, frame: Frame | null, el: NapkinElement, dir: ResizeDir) => void;
+  onStartEdit: (el: NapkinElement, frame: Frame | null) => void;
   onFrameDragStart: (e: React.PointerEvent, frame: Frame) => void;
   onArtboardDoubleClick: (e: React.MouseEvent, frame: Frame) => void;
 }) {
@@ -50,9 +51,11 @@ export function FrameView({
 
   const [renaming, setRenaming] = useState(false);
   const [nameDraft, setNameDraft] = useState(frame.name);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [menuAt, setMenuAt] = useState<{ x: number; y: number } | null>(null);
+  const [menuPos, setMenuPos] = useState<{ left: number; top: number } | null>(null);
   const nameRef = useRef<HTMLInputElement>(null);
-  const actionsRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
   const selected = selectedFrameId === frame.id;
   const hasElementSelection = selection.length > 0;
 
@@ -75,14 +78,37 @@ export function FrameView({
     }
   }, [renaming]);
 
+  // Place the portaled frame menu at the requested point, clamped to the window.
+  useLayoutEffect(() => {
+    if (!menuAt) {
+      setMenuPos(null);
+      return;
+    }
+    const rect = menuRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setMenuPos({
+      left: clamp(menuAt.x, 8, Math.max(8, window.innerWidth - rect.width - 8)),
+      top: clamp(menuAt.y, 8, Math.max(8, window.innerHeight - rect.height - 8)),
+    });
+  }, [menuAt]);
+
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuAt) return;
     const close = (e: PointerEvent) => {
-      if (!actionsRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      if (!menuRef.current?.contains(e.target as Node) && !menuButtonRef.current?.contains(e.target as Node)) {
+        setMenuAt(null);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setMenuAt(null);
     };
     window.addEventListener("pointerdown", close);
-    return () => window.removeEventListener("pointerdown", close);
-  }, [menuOpen]);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuAt]);
 
   const commitName = () => {
     const name = nameDraft.trim();
@@ -90,10 +116,67 @@ export function FrameView({
     setRenaming(false);
   };
 
+  const openMenuAt = (x: number, y: number) => {
+    useStore.getState().selectFrame(frame.id);
+    setMenuAt({ x, y });
+  };
+
   const isPhone = frame.preset === "phone" && frame.shell;
   const isTablet = frame.preset === "tablet" && frame.shell;
   const isDesktop = frame.preset === "desktop" && frame.shell;
   const shellClass = frame.shell ? `has-shell shell-${frame.preset}` : "no-shell";
+
+  const menu = menuAt
+    ? createPortal(
+        <div
+          className="frame-menu frame-menu-portal"
+          ref={menuRef}
+          style={{
+            position: "fixed",
+            left: menuPos?.left ?? menuAt.x,
+            top: menuPos?.top ?? menuAt.y,
+            visibility: menuPos ? "visible" : "hidden",
+          }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={() => {
+              setNameDraft(frame.name);
+              setRenaming(true);
+              setMenuAt(null);
+            }}
+          >
+            <PencilLine size={13} /> Rename
+          </button>
+          <button
+            onClick={() => {
+              duplicateFrame(frame.id);
+              setMenuAt(null);
+            }}
+          >
+            <Copy size={13} /> Duplicate
+          </button>
+          <button
+            onClick={() => {
+              setExportOpen(true, [frame.id]);
+              setMenuAt(null);
+            }}
+          >
+            <Download size={13} /> Export PNG
+          </button>
+          <button
+            className="danger"
+            onClick={() => {
+              deleteFrame(frame.id);
+              setMenuAt(null);
+            }}
+          >
+            <Trash2 size={13} /> Delete frame
+          </button>
+        </div>,
+        document.body,
+      )
+    : null;
 
   return (
     <div
@@ -112,8 +195,7 @@ export function FrameView({
         onContextMenu={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          useStore.getState().selectFrame(frame.id);
-          setMenuOpen(true);
+          openMenuAt(e.clientX, e.clientY);
         }}
       >
         <span className="frame-glyph">
@@ -151,7 +233,7 @@ export function FrameView({
         <span className="frame-size">
           {frame.w} × {frame.h}
         </span>
-        <div className="frame-actions" ref={actionsRef} onPointerDown={(e) => e.stopPropagation()}>
+        <div className="frame-actions" onPointerDown={(e) => e.stopPropagation()}>
           <button
             className="frame-action"
             title="Export this frame"
@@ -160,50 +242,20 @@ export function FrameView({
             <Download size={13} />
           </button>
           <button
-            className={`frame-action ${menuOpen ? "active" : ""}`}
+            className={`frame-action ${menuAt ? "active" : ""}`}
             title="Frame menu"
-            onClick={() => setMenuOpen((v) => !v)}
+            ref={menuButtonRef}
+            onClick={() => {
+              if (menuAt) {
+                setMenuAt(null);
+                return;
+              }
+              const rect = menuButtonRef.current?.getBoundingClientRect();
+              openMenuAt(rect?.left ?? 0, (rect?.bottom ?? 0) + 4);
+            }}
           >
             <MoreHorizontal size={14} />
           </button>
-          {menuOpen && (
-            <div className="frame-menu" onPointerDown={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => {
-                  setNameDraft(frame.name);
-                  setRenaming(true);
-                  setMenuOpen(false);
-                }}
-              >
-                <PencilLine size={13} /> Rename
-              </button>
-              <button
-                onClick={() => {
-                  duplicateFrame(frame.id);
-                  setMenuOpen(false);
-                }}
-              >
-                <Copy size={13} /> Duplicate
-              </button>
-              <button
-                onClick={() => {
-                  setExportOpen(true, [frame.id]);
-                  setMenuOpen(false);
-                }}
-              >
-                <Download size={13} /> Export PNG
-              </button>
-              <button
-                className="danger"
-                onClick={() => {
-                  deleteFrame(frame.id);
-                  setMenuOpen(false);
-                }}
-              >
-                <Trash2 size={13} /> Delete frame
-              </button>
-            </div>
-          )}
         </div>
         {selected && !hasElementSelection && <span className="frame-selected-tag">selected</span>}
       </div>
@@ -247,8 +299,7 @@ export function FrameView({
           onContextMenu={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            useStore.getState().selectFrame(frame.id);
-            setMenuOpen(true);
+            openMenuAt(e.clientX, e.clientY);
           }}
         >
           {(isPhone || isTablet) && (
@@ -296,6 +347,8 @@ export function FrameView({
           </>
         )}
       </div>
+
+      {menu}
     </div>
   );
 }

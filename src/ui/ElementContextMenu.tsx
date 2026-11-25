@@ -5,7 +5,6 @@ import {
   Copy,
   Crop,
   Layers,
-  RefreshCw,
   Trash2,
 } from "lucide-react";
 import { SPECS } from "../data/components";
@@ -28,7 +27,9 @@ export function ElementContextMenu() {
   const ref = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: 0, top: 0 });
 
-  const selected = project.frames.flatMap((f) => f.elements).filter((el) => selection.includes(el.id));
+  const selected = [...project.frames.flatMap((f) => f.elements), ...project.images].filter((el) =>
+    selection.includes(el.id),
+  );
   const colorEligible = selected.filter((el) => supportsColor(el.type));
   const single = selected.length === 1 ? selected[0] : null;
   const title = single ? SPECS[single.type]?.name ?? single.type : `${selected.length} elements`;
@@ -174,14 +175,6 @@ export function ElementContextMenu() {
           }}
         >
           <Copy size={14} /> Duplicate
-        </button>
-        <button
-          onClick={() => {
-            useStore.getState().reSeedSelection();
-            close();
-          }}
-        >
-          <RefreshCw size={14} /> Re-sketch
         </button>
         <button
           className="danger"

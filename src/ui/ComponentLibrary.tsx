@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronRight, Search, X } from "lucide-react";
+import { ChevronLeft, Search, X } from "lucide-react";
 import { COMPONENTS, GROUP_ORDER, SPECS } from "../data/components";
 import { useStore } from "../store";
 import type { ComponentGroup, ComponentSpec } from "../types";
@@ -71,7 +71,7 @@ function MiniPreview({ spec }: { spec: ComponentSpec }) {
             top: "50%",
           }}
         >
-          <SketchProvider roughness={1.1}>
+          <SketchProvider roughness={0} clean>
             <div style={{ position: "absolute", inset: 0, fontFamily: "var(--font-hand)" }}>
               <Wireframe type={spec.type} w={spec.defaultW} h={spec.defaultH} p={spec.defaults} seed={42} />
             </div>
@@ -136,7 +136,7 @@ export function ComponentLibrary() {
           <span className="flyout-count">{COMPONENTS.length}</span>
         </div>
         <button className="icon-btn flyout-close" onClick={() => setFlyout(null)} aria-label="Close components">
-          <ChevronRight size={17} />
+          <ChevronLeft size={17} />
         </button>
       </div>
 

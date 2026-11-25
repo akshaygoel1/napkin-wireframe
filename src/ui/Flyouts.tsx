@@ -63,7 +63,7 @@ function PreviewTile({
             top: "50%",
           }}
         >
-          <SketchProvider roughness={1.05}>
+          <SketchProvider roughness={0} clean>
             <span style={{ position: "absolute", inset: 0, display: "block", fontFamily: "var(--font-hand)" }}>
               <Wireframe type={type} w={spec.defaultW} h={spec.defaultH} p={{ ...spec.defaults, ...(variant ? { variant } : {}) }} seed={13} />
             </span>

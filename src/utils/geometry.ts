@@ -1,4 +1,4 @@
-import type { Frame, Preset } from "../types";
+import type { Frame, NapkinElement, Preset } from "../types";
 
 export interface ShellMetrics {
   padX: number;
@@ -32,8 +32,8 @@ export function frameBlockRect(frame: Frame) {
   };
 }
 
-export function projectBounds(frames: Frame[]) {
-  if (!frames.length) return { x: 0, y: 0, w: 0, h: 0 };
+export function projectBounds(frames: Frame[], images: NapkinElement[] = []) {
+  if (!frames.length && !images.length) return { x: 0, y: 0, w: 0, h: 0 };
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -44,6 +44,12 @@ export function projectBounds(frames: Frame[]) {
     minY = Math.min(minY, r.y);
     maxX = Math.max(maxX, r.x + r.w);
     maxY = Math.max(maxY, r.y + r.h);
+  });
+  images.forEach((el) => {
+    minX = Math.min(minX, el.x);
+    minY = Math.min(minY, el.y);
+    maxX = Math.max(maxX, el.x + el.w);
+    maxY = Math.max(maxY, el.y + el.h);
   });
   return { x: minX, y: minY, w: maxX - minX, h: maxY - minY };
 }

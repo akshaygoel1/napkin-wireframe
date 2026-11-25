@@ -215,20 +215,6 @@ export function ExportDialog() {
               </div>
 
               <div className="export-field">
-                <span className="export-label">Style</span>
-                <div className="style-options">
-                  <button className={`style-option ${opts.style === "sketchy" ? "active" : ""}`} onClick={() => patch({ style: "sketchy" })}>
-                    <span className="style-preview sketchy">~</span>
-                    <span><b>Sketchy</b><small>As seen on the canvas</small></span>
-                  </button>
-                  <button className={`style-option ${opts.style === "clean" ? "active" : ""}`} onClick={() => patch({ style: "clean" })}>
-                    <span className="style-preview clean">—</span>
-                    <span><b>Clean</b><small>Straighter lines and text</small></span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="export-field">
                 <span className="export-label">Include</span>
                 <label className="export-check-row">
                   <input type="checkbox" checked={opts.includeTitle} onChange={(e) => patch({ includeTitle: e.target.checked })} />

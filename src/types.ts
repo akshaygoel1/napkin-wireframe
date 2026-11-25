@@ -119,6 +119,11 @@ export interface Project {
   id: string;
   name: string;
   frames: Frame[];
+  /**
+   * Imported images live at canvas level, independent of any frame. They use
+   * world coordinates and are intentionally excluded from per-frame exports.
+   */
+  images: NapkinElement[];
   updatedAt: number;
 }
 

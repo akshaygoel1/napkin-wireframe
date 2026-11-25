@@ -159,6 +159,12 @@
   font-family: var(--font-ui);
 }
 
+/* Frame menus are portaled to the body so they can open at the pointer. */
+.frame-menu-portal {
+  top: auto;
+  right: auto;
+}
+
 .frame-menu button {
   display: flex;
   align-items: center;

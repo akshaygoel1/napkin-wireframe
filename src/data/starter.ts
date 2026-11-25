@@ -42,7 +42,7 @@ export function createDemoProject(): Project {
     }),
     at("text", 20, 116, 330, 32, { label: "Good morning, Akshay", variant: "h2" }),
     at("text", 20, 150, 320, 22, { label: "Here's what's brewing today.", variant: "muted" }),
-    at("search-bar", 20, 186, 350, 52, { label: "Search your library" }),
+    at("search-bar", 20, 186, 350, 52, { placeholder: "Search your library" }),
     at("chips", 20, 254, 330, 36, {
       items: ["All", "New", "Saved", "Filters"],
       selectedIndex: 0,
@@ -53,11 +53,12 @@ export function createDemoProject(): Project {
       lines: 2,
     }),
     at("text", 20, 494, 200, 26, { label: "For you", variant: "h3" }),
-    at("text", 300, 496, 70, 20, { label: "See all", variant: "link", align: "right" }),
+    at("text", 300, 496, 70, 20, { label: "See all", variant: "link", align: "right", color: "#46716d" }),
     at("list", 20, 528, 350, 152, {
       items: ["Warm up with a pour-over", "The quiet hour", "Notes on slow mornings"],
     }),
-    at("fab", 312, 690, 56, 56, { icon: "add" }),
+    at("progress", 20, 692, 260, 8, { value: 68, color: "#46716d" }),
+    at("fab", 312, 690, 56, 56, { icon: "add", color: "#46716d" }),
     at("nav-bar", 0, 764, 390, 80, {
       items: ["Home", "Explore", "Saved", "You"],
       icons: ["home", "explore", "bookmark", "person"],
@@ -73,7 +74,7 @@ export function createDemoProject(): Project {
       icon3: "share",
     }),
     at("image", 20, 112, 350, 270),
-    at("badge", 296, 124, 54, 24, { label: "NEW", variant: "count" }),
+    at("badge", 296, 124, 54, 24, { label: "NEW", variant: "count", color: "#9e5647" }),
     at("text", 20, 396, 310, 32, { label: "Hand-thrown mug", variant: "h2" }),
     at("rating", 20, 436, 150, 24, { label: "102", value: 5 }),
     at("text", 250, 430, 120, 32, { label: "€ 12,66", variant: "h3", align: "right" }),
@@ -81,10 +82,16 @@ export function createDemoProject(): Project {
     at("chips", 20, 532, 340, 36, {
       items: ["Speckled", "Glazed", "Stoneware"],
       selectedIndex: 0,
+      color: "#8f6b2c",
     }),
     at("text", 20, 586, 320, 20, { label: "Colour — Oat", variant: "muted" }),
     at("segmented-button", 20, 614, 150, 44, { items: ["1", "2", "3"], selectedIndex: 1 }),
-    at("button", 182, 614, 188, 44, { label: "Add to bag", icon: "shopping_bag", variant: "filled" }),
+    at("button", 182, 614, 188, 44, {
+      label: "Add to bag",
+      icon: "shopping_bag",
+      variant: "filled",
+      color: "#46716d",
+    }),
     at("text", 20, 670, 320, 20, { label: "Free delivery over €50", variant: "muted" }),
     at("divider", 20, 704, 350, 2),
     at("list-item", 20, 716, 350, 40, { label: "From the same studio" }),
@@ -112,6 +119,7 @@ export function createDemoProject(): Project {
     at("segmented-button", 872, 112, 280, 40, {
       items: ["Week", "Month", "Year"],
       selectedIndex: 1,
+      color: "#566a92",
     }),
     at("stat", 128, 188, 304, 130, {
       items: ["Active projects", "12", "+2 this week"],
@@ -127,8 +135,11 @@ export function createDemoProject(): Project {
     }),
     at("chart", 128, 352, 640, 360, { label: "Frames created" }),
     at("table", 792, 352, 348, 360, { items: ["Project", "Frames", "Updated"] }),
-    at("text", 128, 744, 320, 20, { label: "All changes saved locally", variant: "muted" }),
-    at("extended-fab", 920, 708, 170, 56, { label: "New frame", icon: "add" }),
+    at("snackbar", 128, 736, 380, 52, {
+      label: "Export finished · 3 PNGs",
+      color: "#46716d",
+    }),
+    at("extended-fab", 920, 708, 170, 56, { label: "New frame", icon: "add", color: "#46716d" }),
   ]);
 
   return {
@@ -136,6 +147,7 @@ export function createDemoProject(): Project {
     id: uid("p"),
     name: "Tidepool flow",
     frames: [home, product, dashboard],
+    images: [],
     updatedAt: Date.now(),
   };
 }
@@ -146,6 +158,7 @@ export function createEmptyProject(): Project {
     id: uid("p"),
     name: "Untitled napkin",
     frames: [],
+    images: [],
     updatedAt: Date.now(),
   };
 }

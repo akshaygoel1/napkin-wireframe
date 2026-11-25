@@ -138,7 +138,7 @@ function ComponentThumb({ type, props }: { type: ElementType; props?: Partial<El
           display: "block",
         }}
       >
-        <SketchProvider roughness={1.05}>
+        <SketchProvider roughness={0} clean>
           <span style={{ position: "absolute", inset: 0, display: "block", fontFamily: "var(--font-hand)" }}>
             <Wireframe type={type} w={spec.defaultW} h={spec.defaultH} p={{ ...spec.defaults, ...props }} seed={7} />
           </span>

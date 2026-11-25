@@ -19,7 +19,6 @@ import {
   Palette,
   PencilLine,
   Plus,
-  RefreshCw,
   Scan,
   Sparkles,
   Trash2,
@@ -32,6 +31,7 @@ import type { ElementProps, ElementType, NapkinElement } from "../types";
 import { canvasApi } from "../utils/canvasApi";
 import { clamp } from "../utils/geometry";
 import { supportsColor } from "../utils/color";
+import { labelHeading, showsItems, showsLabel, showsPlaceholder } from "../utils/content";
 import { Glyph } from "../components/Sketch";
 import { ColorField } from "./ColorField";
 import { ImageImportButton } from "./ImageImport";
@@ -243,20 +243,16 @@ function ElementInspector({ el }: { el: NapkinElement }) {
   const removeElements = useStore((s) => s.removeElements);
   const duplicateSelection = useStore((s) => s.duplicateSelection);
   const reorder = useStore((s) => s.reorder);
-  const reSeedSelection = useStore((s) => s.reSeedSelection);
   const swapElement = useStore((s) => s.swapElement);
   const setCropId = useStore((s) => s.setCropId);
   const variants = VARIANT_OPTIONS[el.type];
   const iconSlots = ICON_SLOTS[el.type] ?? [];
-  const hasItems = Array.isArray(el.props.items);
+  const hasItems = showsItems(el.type);
   const isTextInput = el.type === "text-field" || el.type === "text-area";
-  const hasLabel = el.props.label !== undefined || spec.defaults.label !== undefined || ["text", "paragraph", "sticky", "callout"].includes(el.type);
+  const hasLabel = showsLabel(el);
+  const hasPlaceholder = showsPlaceholder(el.type);
   const siblings = COMPONENTS.filter((c) => c.group === spec.group && c.type !== el.type);
-  const labelFor = useMemo(() => {
-    if (el.type === "text" || el.type === "paragraph") return "Text";
-    if (el.type === "sticky" || el.type === "callout") return "Note";
-    return "Label";
-  }, [el.type]);
+  const labelFor = labelHeading(el.type);
 
   return (
     <>
@@ -346,7 +342,7 @@ function ElementInspector({ el }: { el: NapkinElement }) {
         </Section>
       )}
 
-      {hasLabel && (
+      {(hasLabel || hasPlaceholder || el.type === "paragraph" || el.type === "card") && (
         <Section title="Content">
           {isTextInput && (
             <label className="toggle-row">
@@ -358,7 +354,7 @@ function ElementInspector({ el }: { el: NapkinElement }) {
               />
             </label>
           )}
-          {(!isTextInput || el.props.showLabel) && (
+          {hasLabel && (!isTextInput || el.props.showLabel) && (
             <TextField
               label={labelFor}
               value={el.props.label ?? ""}
@@ -366,7 +362,7 @@ function ElementInspector({ el }: { el: NapkinElement }) {
               onCommit={(label) => updateProps(el.id, { label })}
             />
           )}
-          {(isTextInput || el.type === "search-bar") && (
+          {hasPlaceholder && (
             <TextField
               label="Placeholder"
               value={el.props.placeholder ?? ""}
@@ -543,7 +539,6 @@ function ElementInspector({ el }: { el: NapkinElement }) {
         </div>
         <div className="insp-button-row">
           <button className="btn btn-ghost" onClick={duplicateSelection}><Copy size={13} /> Duplicate</button>
-          <button className="btn btn-ghost" onClick={reSeedSelection}><RefreshCw size={13} /> Re-sketch</button>
         </div>
       </Section>
     </>
@@ -553,7 +548,6 @@ function ElementInspector({ el }: { el: NapkinElement }) {
 function MultiInspector({ elements }: { elements: NapkinElement[] }) {
   const alignSelection = useStore((s) => s.alignSelection);
   const reorder = useStore((s) => s.reorder);
-  const reSeedSelection = useStore((s) => s.reSeedSelection);
   const duplicateSelection = useStore((s) => s.duplicateSelection);
   const removeElements = useStore((s) => s.removeElements);
   const selection = useStore((s) => s.selection);
@@ -601,7 +595,6 @@ function MultiInspector({ elements }: { elements: NapkinElement[] }) {
       <Section title="Selection">
         <div className="insp-button-row">
           <button className="btn btn-ghost" onClick={duplicateSelection}><Copy size={13} /> Duplicate</button>
-          <button className="btn btn-ghost" onClick={reSeedSelection}><RefreshCw size={13} /> Re-sketch</button>
         </div>
         <button className="btn btn-danger-ghost full" onClick={() => removeElements(selection)}><Trash2 size={13} /> Delete {elements.length} elements</button>
       </Section>
@@ -685,12 +678,10 @@ function FrameInspector() {
 
 function BoardInspector() {
   const project = useStore((s) => s.project);
-  const sketchiness = useStore((s) => s.sketchiness);
-  const setSketchiness = useStore((s) => s.setSketchiness);
   const grid = useStore((s) => s.grid);
   const setGrid = useStore((s) => s.setGrid);
   const setPaletteOpen = useStore((s) => s.setPaletteOpen);
-  const sceneElements = project.frames.reduce((n, f) => n + f.elements.length, 0);
+  const sceneElements = project.frames.reduce((n, f) => n + f.elements.length, 0) + project.images.length;
 
   return (
     <>
@@ -701,18 +692,7 @@ function BoardInspector() {
           <p>{project.name}</p>
         </div>
       </div>
-      <Section title="Sketchiness">
-        <div className="board-slider">
-          <input
-            type="range"
-            min={0}
-            max={3}
-            step={0.1}
-            value={sketchiness}
-            onChange={(e) => setSketchiness(Number(e.target.value))}
-          />
-          <div className="board-slider-labels"><span>Clean</span><span>Rough</span></div>
-        </div>
+      <Section title="Canvas">
         <label className="toggle-row">
           <span><Grid3X3 size={14} /> Dot grid</span>
           <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.target.checked)} />
@@ -722,13 +702,13 @@ function BoardInspector() {
         <div className="stats-list">
           <div><b>{project.frames.length}</b><span>frames</span></div>
           <div><b>{sceneElements}</b><span>elements</span></div>
-          <div><b>{sketchiness < 0.3 ? "Clean" : sketchiness < 1.4 ? "Medium" : "Heavy"}</b><span>style</span></div>
+          <div><b>Clean</b><span>style</span></div>
         </div>
         <button className="btn btn-primary full" onClick={() => setPaletteOpen(true)}>
           <Plus size={14} /> Add something
         </button>
         <button className="btn btn-ghost full" onClick={() => canvasApi.fitAll()}>
-          <Maximize size={13} /> Fit all frames
+          <Maximize size={13} /> Fit all
         </button>
       </Section>
       <div className="insp-tip">
@@ -750,8 +730,8 @@ export function Inspector() {
   const selectedElements = useMemo(() => {
     if (!selection.length) return [];
     const ids = new Set(selection);
-    return project.frames.flatMap((f) => f.elements).filter((el) => ids.has(el.id));
-  }, [selection, project.frames]);
+    return [...project.frames.flatMap((f) => f.elements), ...project.images].filter((el) => ids.has(el.id));
+  }, [selection, project.frames, project.images]);
 
   if (!open) {
     return (

@@ -36,8 +36,6 @@ interface StoreState {
   iconSlot: IconSlot | null;
   quickAddSeed: string;
   grid: boolean;
-  sketchiness: number;
-  cleanExport: boolean;
   inspectorOpen: boolean;
   cropId: string | null;
   toast: { id: number; text: string; action?: string; onAction?: () => void } | null;
@@ -77,12 +75,21 @@ interface StoreState {
   ) => NapkinElement | null;
   updateElement: (id: string, patch: Partial<NapkinElement>, record?: boolean) => void;
   updateProps: (id: string, props: Partial<ElementProps>, record?: boolean) => void;
-  removeElements: (ids: string[]) => void;
+  insertFreeImage: (
+    type: ElementType,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    props?: Partial<ElementProps>,
+    select?: boolean,
+  ) => NapkinElement | null;
+  removeElements: (ids: string[], record?: boolean) => void;
   duplicateSelection: () => void;
   pasteElements: () => void;
   copySelection: () => void;
   selectElements: (ids: string[], frameId?: string | null) => void;
-  toggleSelection: (id: string, frameId: string) => void;
+  toggleSelection: (id: string, frameId: string | null) => void;
   selectAllInFrame: () => void;
   nudgeSelection: (dx: number, dy: number) => void;
   bringToFront: () => void;
@@ -107,8 +114,6 @@ interface StoreState {
   applyIcon: (name: string, patch?: Partial<ElementProps>) => void;
   swapElement: (id: string, type: ElementType) => void;
   setGrid: (on: boolean) => void;
-  setSketchiness: (n: number) => void;
-  setCleanExport: (on: boolean) => void;
   setInspectorOpen: (open: boolean) => void;
   showToast: (text: string, action?: string, onAction?: () => void) => void;
   clearToast: () => void;
@@ -116,7 +121,7 @@ interface StoreState {
   toggleFavoriteIcon: (name: string) => void;
 }
 
-let pasteBuffer: { frameId: string; elements: NapkinElement[] } | null = null;
+let pasteBuffer: { frameId: string | null; el: NapkinElement }[] | null = null;
 
 // JSON cloning works on both plain state and Immer drafts (structuredClone
 // throws on proxies), and project data is always JSON-safe.
@@ -130,27 +135,28 @@ function pushPast(state: StoreState, snapshot?: Project) {
   state.future = [];
 }
 
-function findElement(project: Project, id: string) {
+function findElement(project: Project, id: string): { frame: Frame | null; el: NapkinElement } | null {
   for (const frame of project.frames) {
     const el = frame.elements.find((e) => e.id === id);
     if (el) return { frame, el };
   }
+  const free = project.images.find((e) => e.id === id);
+  if (free) return { frame: null, el: free };
   return null;
 }
 
 function loadPrefs() {
   try {
     const raw = localStorage.getItem("napkin.prefs.v1");
-    if (!raw) return { grid: true, sketchiness: 1.2, recents: [] as string[], favorites: [] as string[] };
+    if (!raw) return { grid: true, recents: [] as string[], favorites: [] as string[] };
     const p = JSON.parse(raw);
     return {
       grid: p.grid !== false,
-      sketchiness: typeof p.sketchiness === "number" ? p.sketchiness : 1.2,
       recents: Array.isArray(p.recents) ? p.recents.slice(0, 20) : [],
       favorites: Array.isArray(p.favorites) ? p.favorites.slice(0, 60) : [],
     };
   } catch {
-    return { grid: true, sketchiness: 1.2, recents: [] as string[], favorites: [] as string[] };
+    return { grid: true, recents: [] as string[], favorites: [] as string[] };
   }
 }
 
@@ -164,12 +170,19 @@ function isValidProject(value: unknown): value is Project {
   return p.version === 1 && typeof p.name === "string" && Array.isArray(p.frames);
 }
 
+function normalizeProject(project: Project): Project {
+  return {
+    ...project,
+    images: Array.isArray(project.images) ? project.images : [],
+  };
+}
+
 function loadProject(): Project | null {
   try {
     const raw = localStorage.getItem(PROJECT_KEY);
     if (!raw) return null;
     const parsed = JSON.parse(raw);
-    return isValidProject(parsed) ? parsed : null;
+    return isValidProject(parsed) ? normalizeProject(parsed) : null;
   } catch {
     return null;
   }
@@ -189,7 +202,6 @@ function savePrefs(state: StoreState) {
       "napkin.prefs.v1",
       JSON.stringify({
         grid: state.grid,
-        sketchiness: state.sketchiness,
         recents: state.recents,
         favorites: state.favorites,
       }),
@@ -199,7 +211,7 @@ function savePrefs(state: StoreState) {
   }
 }
 
-const initialProject = loadProject() ?? createDemoProject();
+const initialProject = loadProject() ?? createEmptyProject();
 
 export const useStore = create<StoreState>()(
   immer((set, get) => ({
@@ -221,8 +233,6 @@ export const useStore = create<StoreState>()(
     iconSlot: null,
     quickAddSeed: "",
     grid: prefs.grid,
-    sketchiness: prefs.sketchiness,
-    cleanExport: false,
     inspectorOpen: true,
     cropId: null,
     toast: null,
@@ -242,7 +252,10 @@ export const useStore = create<StoreState>()(
         if (!prev) return;
         s.future.push(clone(s.project));
         s.project = prev;
-        const valid = new Set(s.project.frames.flatMap((f) => f.elements.map((e) => e.id)));
+        const valid = new Set([
+          ...s.project.frames.flatMap((f) => f.elements.map((e) => e.id)),
+          ...s.project.images.map((e) => e.id),
+        ]);
         s.selection = s.selection.filter((id) => valid.has(id));
         if (s.selectedFrameId && !s.project.frames.some((f) => f.id === s.selectedFrameId)) {
           s.selectedFrameId = null;
@@ -256,13 +269,16 @@ export const useStore = create<StoreState>()(
         if (!next) return;
         s.past.push(clone(s.project));
         s.project = next;
-        const valid = new Set(s.project.frames.flatMap((f) => f.elements.map((e) => e.id)));
+        const valid = new Set([
+          ...s.project.frames.flatMap((f) => f.elements.map((e) => e.id)),
+          ...s.project.images.map((e) => e.id),
+        ]);
         s.selection = s.selection.filter((id) => valid.has(id));
       }),
 
     setProject: (p, resetView) =>
       set((s) => {
-        s.project = p;
+        s.project = normalizeProject(p);
         s.past = [];
         s.future = [];
         s.selection = [];
@@ -306,7 +322,7 @@ export const useStore = create<StoreState>()(
     importProject: (p) =>
       set((s) => {
         pushPast(s);
-        s.project = p;
+        s.project = normalizeProject(p);
         s.selection = [];
         s.selectedFrameId = p.frames[0]?.id ?? null;
         s.project.updatedAt = Date.now();
@@ -431,14 +447,31 @@ export const useStore = create<StoreState>()(
         s.project.updatedAt = Date.now();
       }),
 
-    removeElements: (ids) =>
+    insertFreeImage: (type, x, y, w, h, props, select = true) => {
+      const spec = SPECS[type];
+      if (!spec) return null;
+      const el = makeElement(type, x, y, w, h, props);
+      set((s) => {
+        pushPast(s);
+        s.project.images.push(el);
+        if (select) {
+          s.selection = [el.id];
+          s.selectedFrameId = null;
+        }
+        s.project.updatedAt = Date.now();
+      });
+      return el;
+    },
+
+    removeElements: (ids, record = true) =>
       set((s) => {
         if (!ids.length) return;
-        pushPast(s);
+        if (record) pushPast(s);
         const del = new Set(ids);
         s.project.frames.forEach((f) => {
           f.elements = f.elements.filter((e) => !del.has(e.id));
         });
+        s.project.images = s.project.images.filter((e) => !del.has(e.id));
         s.selection = s.selection.filter((id) => !del.has(id));
         s.project.updatedAt = Date.now();
       }),
@@ -448,6 +481,7 @@ export const useStore = create<StoreState>()(
         if (!s.selection.length) return;
         pushPast(s);
         const newIds: string[] = [];
+        let freeCopied = false;
         s.selection.forEach((id) => {
           const found = findElement(s.project, id);
           if (!found) return;
@@ -456,43 +490,52 @@ export const useStore = create<StoreState>()(
           copy.seed = randomSeed();
           copy.x += 24;
           copy.y += 24;
-          found.frame.elements.push(copy);
+          if (found.frame) {
+            found.frame.elements.push(copy);
+          } else {
+            s.project.images.push(copy);
+            freeCopied = true;
+          }
           newIds.push(copy.id);
         });
         s.selection = newIds;
+        if (freeCopied) s.selectedFrameId = null;
         s.project.updatedAt = Date.now();
       }),
 
     copySelection: () => {
       const s = get();
       if (!s.selection.length) return;
-      const first = findElement(s.project, s.selection[0]);
-      if (!first) return;
-      const elements = s.selection
-        .map((id) => findElement(s.project, id)?.el)
-        .filter(Boolean) as NapkinElement[];
-      pasteBuffer = { frameId: first.frame.id, elements: clone(elements) };
-      s.showToast(`${elements.length} ${elements.length === 1 ? "element" : "elements"} copied`);
+      const buffer = s.selection
+        .map((id) => findElement(s.project, id))
+        .filter((found): found is { frame: Frame | null; el: NapkinElement } => !!found)
+        .map((found) => ({ frameId: found.frame?.id ?? null, el: clone(found.el) }));
+      if (!buffer.length) return;
+      pasteBuffer = buffer;
+      s.showToast(`${buffer.length} ${buffer.length === 1 ? "element" : "elements"} copied`);
     },
 
     pasteElements: () =>
       set((s) => {
         if (!pasteBuffer) return;
-        const frame = s.project.frames.find((f) => f.id === pasteBuffer!.frameId) ?? s.project.frames[0];
-        if (!frame) return;
         pushPast(s);
         const ids: string[] = [];
-        pasteBuffer.elements.forEach((el) => {
-          const copy = clone(el);
+        pasteBuffer.forEach((entry) => {
+          const copy = clone(entry.el);
           copy.id = uid();
           copy.seed = randomSeed();
           copy.x += 24;
           copy.y += 24;
-          frame.elements.push(copy);
+          const frame = entry.frameId ? s.project.frames.find((f) => f.id === entry.frameId) : null;
+          if (frame) {
+            frame.elements.push(copy);
+          } else {
+            s.project.images.push(copy);
+          }
           ids.push(copy.id);
         });
         s.selection = ids;
-        s.selectedFrameId = frame.id;
+        s.selectedFrameId = null;
         s.project.updatedAt = Date.now();
       }),
 
@@ -523,12 +566,14 @@ export const useStore = create<StoreState>()(
         if (s.past.length === 0) pushPast(s);
         else {
           const last = s.past[s.past.length - 1];
-          const currentKey = JSON.stringify(
-            s.project.frames.flatMap((f) => f.elements.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y])),
-          );
-          const lastKey = JSON.stringify(
-            last.frames.flatMap((f) => f.elements.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y])),
-          );
+          const currentKey = JSON.stringify([
+            ...s.project.frames.flatMap((f) => f.elements.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y])),
+            ...s.project.images.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y]),
+          ]);
+          const lastKey = JSON.stringify([
+            ...last.frames.flatMap((f) => f.elements.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y])),
+            ...last.images.filter((e) => s.selection.includes(e.id)).map((e) => [e.id, e.x, e.y]),
+          ]);
           if (currentKey === lastKey) {
             // coalesce repeated nudges
           } else pushPast(s);
@@ -552,7 +597,7 @@ export const useStore = create<StoreState>()(
         s.selection.forEach((id) => {
           const found = findElement(s.project, id);
           if (!found) return;
-          const arr = found.frame.elements;
+          const arr = found.frame ? found.frame.elements : s.project.images;
           const idx = arr.findIndex((e) => e.id === id);
           if (idx < 0) return;
           const [el] = arr.splice(idx, 1);
@@ -569,7 +614,7 @@ export const useStore = create<StoreState>()(
         if (s.selection.length < 2) return;
         const items = s.selection
           .map((id) => findElement(s.project, id))
-          .filter(Boolean) as { frame: Frame; el: NapkinElement }[];
+          .filter(Boolean) as { frame: Frame | null; el: NapkinElement }[];
         if (!items.length) return;
         pushPast(s);
         const minX = Math.min(...items.map((i) => i.el.x));
@@ -689,12 +734,6 @@ export const useStore = create<StoreState>()(
         s.grid = on;
         savePrefs(s as StoreState);
       }),
-    setSketchiness: (n) =>
-      set((s) => {
-        s.sketchiness = n;
-        savePrefs(s as StoreState);
-      }),
-    setCleanExport: (on) => set((s) => { s.cleanExport = on; }),
     setInspectorOpen: (open) => set((s) => { s.inspectorOpen = open; }),
     showToast: (text, action, onAction) =>
       set((s) => {
@@ -747,7 +786,7 @@ export function useSelectedElement(): NapkinElement | null {
     const el = f.elements.find((e) => e.id === id);
     if (el) return el;
   }
-  return null;
+  return project.images.find((e) => e.id === id) ?? null;
 }
 
 export function useSelectedFrame(): Frame | null {

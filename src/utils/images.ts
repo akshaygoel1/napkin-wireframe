@@ -1,9 +1,11 @@
 import { useStore } from "../store";
-import type { Frame, NapkinElement } from "../types";
+import type { Point } from "../types";
 import { canvasApi } from "./canvasApi";
 import { clamp } from "./geometry";
 
 const MAX_IMPORT_DIM = 2000;
+/** Free images are laid out at a readable size on the infinite canvas. */
+const MAX_PLACED_DIM = 560;
 
 export interface ImportedImage {
   src: string;
@@ -14,8 +16,8 @@ export interface ImportedImage {
 export interface ImportImageOptions {
   /** Replace the image inside this element instead of placing a new one. */
   elementId?: string;
-  /** Canvas drop target, in frame-local coordinates. */
-  drop?: { frameId: string; x: number; y: number };
+  /** Canvas drop point, in world coordinates. The image is centred on it. */
+  drop?: Point;
 }
 
 function loadSource(src: string): Promise<HTMLImageElement> {
@@ -84,19 +86,30 @@ export async function cropImageSource(
   return { src: encodeCanvas(canvas), width, height };
 }
 
-function findElement(id: string): { el: NapkinElement; frame: Frame } | null {
-  const state = useStore.getState();
-  for (const frame of state.project.frames) {
-    const el = frame.elements.find((e) => e.id === id);
-    if (el) return { el, frame };
+/** Where a new free image should sit when it was not dropped on the canvas. */
+function defaultDropPoint(): Point {
+  const vp = canvasApi.viewport;
+  const rect = vp?.getBoundingClientRect();
+  const pointer = canvasApi.lastPointer;
+  const inside =
+    !!rect &&
+    !!pointer &&
+    pointer.x >= rect.left &&
+    pointer.x <= rect.right &&
+    pointer.y >= rect.top &&
+    pointer.y <= rect.bottom;
+  const px = inside ? pointer!.x : rect ? rect.left + rect.width / 2 : null;
+  const py = inside ? pointer!.y : rect ? rect.top + rect.height / 2 : null;
+  if (px != null && py != null) {
+    const world = canvasApi.clientToWorld(px, py);
+    if (world) return world;
   }
-  return null;
+  return { x: 0, y: 0 };
 }
 
-function fitInFrame(frame: Frame, img: ImportedImage) {
-  const maxW = Math.max(48, frame.w - 32);
-  const maxH = Math.max(48, frame.h - 32);
-  const scale = Math.min(1, maxW / img.width, maxH / img.height);
+/** Fit a natural image into a comfortable on-canvas box. */
+function placedSize(img: ImportedImage) {
+  const scale = Math.min(MAX_PLACED_DIM / img.width, MAX_PLACED_DIM / img.height);
   return {
     w: Math.max(24, Math.round(img.width * scale)),
     h: Math.max(24, Math.round(img.height * scale)),
@@ -104,42 +117,42 @@ function fitInFrame(frame: Frame, img: ImportedImage) {
 }
 
 async function replaceElementImage(elId: string, file: File) {
-  const found = findElement(elId);
-  if (!found) return false;
-  const img = await readImageFile(file);
   const state = useStore.getState();
-  const hadSource = !!found.el.props.src;
+  const img = await readImageFile(file);
+  for (const frame of state.project.frames) {
+    const el = frame.elements.find((e) => e.id === elId);
+    if (!el) continue;
+    // A frame-owned image was imported before free images existed. Detach it so
+    // the replacement becomes a normal canvas-level image.
+    const worldX = frame.x + el.x;
+    const worldY = frame.y + el.y;
+    const hadSource = !!el.props.src;
+    const { w, h } = hadSource
+      ? { w: Math.max(24, el.w), h: Math.max(24, el.h) }
+      : placedSize(img);
+    const created = useStore
+      .getState()
+      .insertFreeImage("image", worldX, worldY, w, h, { src: img.src, fit: "cover" }, true);
+    if (!created) return false;
+    useStore.getState().removeElements([elId], false);
+    useStore.getState().showToast("Image replaced");
+    return true;
+  }
+
+  const free = state.project.images.find((e) => e.id === elId);
+  if (!free) return false;
+  const hadSource = !!free.props.src;
   state.snapshot();
   state.updateProps(elId, { src: img.src }, false);
   if (!hadSource) {
-    // A placeholder can adopt the image's aspect ratio. Replacements keep their box.
-    let w = Math.max(24, found.el.w);
-    let h = Math.max(24, Math.round((w * img.height) / img.width));
-    const maxW = Math.max(24, found.frame.w - found.el.x - 8);
-    const maxH = Math.max(24, found.frame.h - found.el.y - 8);
-    const scale = Math.min(1, maxW / w, maxH / h);
-    w = Math.max(24, Math.round(w * scale));
-    h = Math.max(24, Math.round(h * scale));
+    const { w, h } = placedSize(img);
     state.updateElement(elId, { w, h }, false);
   }
   state.showToast("Image replaced");
   return true;
 }
 
-function targetFrame(drop?: ImportImageOptions["drop"]): Frame | null {
-  const state = useStore.getState();
-  if (drop) {
-    const dropped = state.project.frames.find((f) => f.id === drop.frameId);
-    if (dropped) return dropped;
-  }
-  return (
-    state.project.frames.find((f) => f.id === state.selectedFrameId) ??
-    state.project.frames[0] ??
-    null
-  );
-}
-
-/** Import one or more images as new image elements, or replace an existing element's source. */
+/** Import one or more images as free canvas images, or replace an existing image's source. */
 export async function importImageFiles(files: File[], options: ImportImageOptions = {}) {
   const images = files.filter(isImageFile);
   if (!images.length) {
@@ -153,7 +166,6 @@ export async function importImageFiles(files: File[], options: ImportImageOption
   }
 
   const state = useStore.getState();
-  let frame = targetFrame(options.drop);
   const loaded: ImportedImage[] = [];
   for (const file of images) {
     try {
@@ -167,25 +179,16 @@ export async function importImageFiles(files: File[], options: ImportImageOption
     return 0;
   }
 
-  if (!frame) {
-    const first = loaded[0];
-    const fw = Math.min(1440, Math.max(360, first.width));
-    const fh = Math.min(1200, Math.max(280, Math.round((fw * first.height) / first.width)));
-    frame = state.addFrame("custom", "Imported screen", fw, fh);
-  }
-
-  const target = frame;
+  const drop = options.drop ?? defaultDropPoint();
   let added = 0;
   loaded.forEach((img, index) => {
-    const { w, h } = fitInFrame(target, img);
+    const { w, h } = placedSize(img);
     const offset = index * 18;
-    const centerX = options.drop && index === 0 ? options.drop.x : target.w / 2;
-    const centerY = options.drop && index === 0 ? options.drop.y : target.h / 2;
-    const x = clamp(Math.round(centerX - w / 2 + offset), 8, Math.max(8, target.w - w - 8));
-    const y = clamp(Math.round(centerY - h / 2 + offset), 8, Math.max(8, target.h - h - 8));
+    const x = Math.round(drop.x - w / 2 + offset);
+    const y = Math.round(drop.y - h / 2 + offset);
     const el = useStore
       .getState()
-      .insertElement(target.id, "image", x, y, w, h, { src: img.src, fit: "cover" }, true);
+      .insertFreeImage("image", x, y, w, h, { src: img.src, fit: "cover" }, true);
     if (el) added++;
   });
 
@@ -195,7 +198,6 @@ export async function importImageFiles(files: File[], options: ImportImageOption
     after.showToast(
       added === 1 ? "Screenshot added — crop it from the inspector" : `${added} images added`,
     );
-    setTimeout(() => canvasApi.centerOnFrame(target.id), 30);
   }
   return added;
 }

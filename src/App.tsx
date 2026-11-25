@@ -277,8 +277,6 @@ export function App() {
   const shortcutsOpen = useStore((s) => s.shortcutsOpen);
   const newFrameOpen = useStore((s) => s.newFrameOpen);
   const aboutOpen = useStore((s) => s.aboutOpen);
-  const sketchiness = useStore((s) => s.sketchiness);
-  const cleanExport = useStore((s) => s.cleanExport);
 
   useGlobalShortcuts();
   useWelcomeToast();
@@ -287,7 +285,7 @@ export function App() {
     <div className="app-shell">
       <TopBar />
       <main className="workspace">
-        <SketchProvider roughness={sketchiness} clean={cleanExport}>
+        <SketchProvider roughness={0} clean>
           <Canvas />
         </SketchProvider>
         <Toolbar />

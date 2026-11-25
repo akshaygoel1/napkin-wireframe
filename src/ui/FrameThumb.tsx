@@ -57,7 +57,7 @@ export function FrameThumb({
         >
           <div className="frame-thumb-browser" />
           <div className="frame-thumb-artboard">
-            <SketchProvider roughness={1.05}>
+            <SketchProvider roughness={0} clean>
               {frame.elements.map((el) => (
                 <div
                   key={el.id}

@@ -3,10 +3,12 @@ import { FRAME_PRESETS } from "../data/starter";
 import { SPECS } from "../data/components";
 import { useStore } from "../store";
 import type { Frame, NapkinElement, Point } from "../types";
-import { canvasApi, frameRegistry } from "../utils/canvasApi";
+import { canvasApi } from "../utils/canvasApi";
 import { clamp, frameBlockRect, projectBounds, snap } from "../utils/geometry";
 import { imageFilesFromDataTransfer, importImageFiles } from "../utils/images";
+import { editTarget, parseItems } from "../utils/content";
 import { FrameView } from "./FrameView";
+import { ElementView } from "./ElementView";
 import type { ResizeDir } from "./ElementView";
 
 type Interaction =
@@ -15,7 +17,7 @@ type Interaction =
       kind: "drag-el";
       startX: number;
       startY: number;
-      items: { id: string; frameId: string; x: number; y: number }[];
+      items: { id: string; frameId: string | null; x: number; y: number }[];
       snapshot: unknown;
       moved: boolean;
     }
@@ -25,7 +27,7 @@ type Interaction =
       startX: number;
       startY: number;
       elId: string;
-      frameId: string;
+      frameId: string | null;
       startRect: { x: number; y: number; w: number; h: number };
       snapshot: unknown;
       moved: boolean;
@@ -52,8 +54,9 @@ type Interaction =
     };
 
 interface Editing {
-  frameId: string;
   elId: string;
+  field: "label" | "placeholder" | "items";
+  title: string;
   value: string;
   left: number;
   top: number;
@@ -84,7 +87,7 @@ function InlineEditor({
   return (
     <div className="inline-editor" style={{ left: editing.left, top: editing.top, width: editing.width }}>
       <div className="inline-editor-head">
-        <span>Edit label</span>
+        <span>{editing.title}</span>
         <span className="inline-editor-hint">↵ done · esc cancel</span>
       </div>
       <input
@@ -113,6 +116,7 @@ function InlineEditor({
 export function Canvas() {
   const viewportRef = useRef<HTMLDivElement>(null);
   const frames = useStore((s) => s.project.frames);
+  const images = useStore((s) => s.project.images);
   const projectId = useStore((s) => s.project.id);
   const view = useStore((s) => s.view);
   const grid = useStore((s) => s.grid);
@@ -149,7 +153,7 @@ export function Canvas() {
     const vp = viewportRef.current;
     const state = useStore.getState();
     if (!vp) return;
-    const bounds = projectBounds(state.project.frames);
+    const bounds = projectBounds(state.project.frames, state.project.images);
     if (!bounds.w || !bounds.h) {
       setView({ zoom: 0.8, tx: vp.clientWidth / 2 - 320, ty: vp.clientHeight / 2 - 240 });
       return;
@@ -335,7 +339,7 @@ export function Canvas() {
     setInteractionBusy(true);
   };
 
-  const onElementPointerDown = (e: React.PointerEvent, frame: Frame, el: NapkinElement) => {
+  const onElementPointerDown = (e: React.PointerEvent, frame: Frame | null, el: NapkinElement) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     const state = useStore.getState();
@@ -344,21 +348,21 @@ export function Canvas() {
       return;
     }
     if (state.armed) {
-      startArmedDraw(e, frame);
+      if (frame) startArmedDraw(e, frame);
       return;
     }
     let selection = state.selection;
     if (e.shiftKey) {
       if (selection.includes(el.id)) {
         selection = selection.filter((id) => id !== el.id);
-        state.selectElements(selection, frame.id);
+        state.selectElements(selection, frame?.id ?? null);
         return;
       }
       selection = [...selection, el.id];
     } else if (!selection.includes(el.id)) {
       selection = [el.id];
     }
-    state.selectElements(selection, frame.id);
+    state.selectElements(selection, frame?.id ?? null);
     const latest = useStore.getState();
     const items = latest.selection
       .map((id) => {
@@ -366,9 +370,11 @@ export function Canvas() {
           const found = f.elements.find((x) => x.id === id);
           if (found) return { id, frameId: f.id, x: found.x, y: found.y };
         }
+        const free = latest.project.images.find((x) => x.id === id);
+        if (free) return { id, frameId: null, x: free.x, y: free.y };
         return null;
       })
-      .filter(Boolean) as { id: string; frameId: string; x: number; y: number }[];
+      .filter(Boolean) as { id: string; frameId: string | null; x: number; y: number }[];
     if (!items.length) return;
     interaction.current = {
       kind: "drag-el",
@@ -381,17 +387,17 @@ export function Canvas() {
     setInteractionBusy(true);
   };
 
-  const onResizeStart = (e: React.PointerEvent, frame: Frame, el: NapkinElement, dir: ResizeDir) => {
+  const onResizeStart = (e: React.PointerEvent, frame: Frame | null, el: NapkinElement, dir: ResizeDir) => {
     if (e.button !== 0) return;
     e.stopPropagation();
-    useStore.getState().selectElements([el.id], frame.id);
+    useStore.getState().selectElements([el.id], frame?.id ?? null);
     interaction.current = {
       kind: "resize",
       dir,
       startX: e.clientX,
       startY: e.clientY,
       elId: el.id,
-      frameId: frame.id,
+      frameId: frame?.id ?? null,
       startRect: { x: el.x, y: el.y, w: el.w, h: el.h },
       snapshot: structuredClone(useStore.getState().project),
       moved: false,
@@ -459,22 +465,34 @@ export function Canvas() {
     const h = Math.min(spec.defaultH, frame.h - 32);
     const x = clamp(snap(world.x - frame.x - w / 2, 4), 4, Math.max(4, frame.w - w - 4));
     const y = clamp(snap(world.y - frame.y - h / 2, 4), 4, Math.max(4, frame.h - h - 4));
-    const el = state.insertElement(frame.id, "text", x, y, w, h, { label: "" });
-    if (el) onStartEdit(frame, el);
+    // Double-clicking a frame only inserts a text element. It must not open the
+    // label editor, which belongs to the element's own double-click.
+    state.insertElement(frame.id, "text", x, y, w, h, { label: "" });
   };
 
-  const onStartEdit = (frame: Frame, el: NapkinElement) => {
+  const onStartEdit = (el: NapkinElement, frame: Frame | null) => {
     const vp = viewportRef.current;
-    const art = frameRegistry.get(frame.id)?.artboard;
-    if (!vp || !art) return;
-    const artRect = art.getBoundingClientRect();
+    if (!vp) return;
+    const target = editTarget(el);
+    if (!target) return;
+    const node = vp.querySelector<HTMLElement>(`[data-el-id="${el.id}"]`);
+    if (!node) return;
+    const elRect = node.getBoundingClientRect();
     const vpRect = vp.getBoundingClientRect();
     const state = useStore.getState();
-    state.selectElements([el.id], frame.id);
+    state.selectElements([el.id], frame?.id ?? null);
     const width = Math.max(220, Math.min(el.w * state.view.zoom + 40, 340));
-    const left = clamp(artRect.left - vpRect.left + el.x * state.view.zoom, 12, vp.clientWidth - width - 12);
-    const top = clamp(artRect.top - vpRect.top + el.y * state.view.zoom, 12, vp.clientHeight - 70);
-    setEditing({ frameId: frame.id, elId: el.id, value: el.props.label ?? "", left, top, width });
+    const left = clamp(elRect.left - vpRect.left, 12, vp.clientWidth - width - 12);
+    const top = clamp(elRect.top - vpRect.top, 12, vp.clientHeight - 70);
+    setEditing({
+      elId: el.id,
+      field: target.field,
+      title: target.title,
+      value: target.value,
+      left,
+      top,
+      width,
+    });
   };
 
   const onCanvasBackgroundDown = (e: React.PointerEvent) => {
@@ -507,14 +525,8 @@ export function Canvas() {
     if (!files.length) return;
     e.preventDefault();
     const world = pointerToWorld(e.clientX, e.clientY);
-    let drop: { frameId: string; x: number; y: number } | undefined;
-    if (world) {
-      const frame = frames.find(
-        (f) => world.x >= f.x && world.x <= f.x + f.w && world.y >= f.y && world.y <= f.y + f.h,
-      );
-      if (frame) drop = { frameId: frame.id, x: world.x - frame.x, y: world.y - frame.y };
-    }
-    void importImageFiles(files, { drop }).catch(() =>
+    // Imported images always land on the free canvas, never inside a frame.
+    void importImageFiles(files, world ? { drop: { x: world.x, y: world.y } } : {}).catch(() =>
       useStore.getState().showToast("That image could not be read"),
     );
   };
@@ -574,11 +586,15 @@ export function Canvas() {
           state.snapshot(act.snapshot as never);
         }
         act.items.forEach((item) => {
-          const frame = state.project.frames.find((f) => f.id === item.frameId);
-          if (!frame) return;
-          const nx = clamp(snap(item.x + dx), 0, Math.max(0, frame.w - 8));
-          const ny = clamp(snap(item.y + dy), 0, Math.max(0, frame.h - 8));
-          state.updateElement(item.id, { x: nx, y: ny }, false);
+          if (item.frameId) {
+            const frame = state.project.frames.find((f) => f.id === item.frameId);
+            if (!frame) return;
+            const nx = clamp(snap(item.x + dx), 0, Math.max(0, frame.w - 8));
+            const ny = clamp(snap(item.y + dy), 0, Math.max(0, frame.h - 8));
+            state.updateElement(item.id, { x: nx, y: ny }, false);
+          } else {
+            state.updateElement(item.id, { x: snap(item.x + dx), y: snap(item.y + dy) }, false);
+          }
         });
         return;
       }
@@ -604,7 +620,7 @@ export function Canvas() {
           h = Math.max(min, act.startRect.h + (act.startRect.y - ny));
           y = ny;
         }
-        const frame = state.project.frames.find((f) => f.id === act.frameId);
+        const frame = act.frameId ? state.project.frames.find((f) => f.id === act.frameId) : null;
         if (frame) {
           x = clamp(x, 0, frame.w - w);
           y = clamp(y, 0, frame.h - h);
@@ -658,7 +674,7 @@ export function Canvas() {
         };
         if (rect.w > 2 || rect.h > 2) {
           const hits: string[] = [];
-          let hitFrameId: string | undefined;
+          let hitFrameId: string | null | undefined;
           state.project.frames.forEach((f) => {
             f.elements.forEach((el) => {
               const ex1 = f.x + el.x;
@@ -670,6 +686,17 @@ export function Canvas() {
                 if (!hitFrameId) hitFrameId = f.id;
               }
             });
+          });
+          state.project.images.forEach((el) => {
+            if (
+              el.x < rect.x + rect.w &&
+              el.x + el.w > rect.x &&
+              el.y < rect.y + rect.h &&
+              el.y + el.h > rect.y
+            ) {
+              hits.push(el.id);
+              hitFrameId = null;
+            }
           });
           state.selectElements(act.additive ? Array.from(new Set([...state.selection, ...hits])) : hits, hitFrameId);
         }
@@ -736,14 +763,27 @@ export function Canvas() {
   const commitEdit = (value: string) => {
     if (!editing) return;
     const state = useStore.getState();
-    const current = state.project.frames.flatMap((f) => f.elements).find((e) => e.id === editing.elId);
-    if (current && (current.props.label ?? "") !== value) {
-      state.updateProps(editing.elId, { label: value });
+    const current =
+      state.project.frames.flatMap((f) => f.elements).find((e) => e.id === editing.elId) ??
+      state.project.images.find((e) => e.id === editing.elId);
+    if (current) {
+      if (editing.field === "items") {
+        const items = parseItems(value);
+        if ((current.props.items ?? []).join(", ") !== items.join(", ")) {
+          state.updateProps(editing.elId, { items });
+        }
+      } else if (editing.field === "placeholder") {
+        if ((current.props.placeholder ?? "") !== value) {
+          state.updateProps(editing.elId, { placeholder: value });
+        }
+      } else if ((current.props.label ?? "") !== value) {
+        state.updateProps(editing.elId, { label: value });
+      }
     }
     setEditing(null);
   };
 
-  const empty = frames.length === 0;
+  const empty = frames.length === 0 && images.length === 0;
   const gridSize = 24 * zoom;
   const ghostFrame = ghost ? frames.find((f) => f.id === ghost.frameId) : null;
   const armedSpec = armed ? SPECS[armed.type] : null;
@@ -806,7 +846,7 @@ export function Canvas() {
           </div>
           <div className="empty-foot">
             <button className="link-btn" onClick={() => useStore.getState().newProject("demo")}>
-              or open the demo board →
+              or open the Tidepool template →
             </button>
             <span className="empty-keys"><kbd>F</kbd> frame · <kbd>/</kbd> add · <kbd>?</kbd> shortcuts</span>
           </div>
@@ -828,6 +868,18 @@ export function Canvas() {
             onStartEdit={onStartEdit}
             onFrameDragStart={onFrameDragStart}
             onArtboardDoubleClick={onArtboardDoubleClick}
+          />
+        ))}
+
+        {images.map((el) => (
+          <ElementView
+            key={el.id}
+            frame={null}
+            el={el}
+            zoom={zoom}
+            onPointerDown={onElementPointerDown}
+            onResizeStart={onResizeStart}
+            onStartEdit={onStartEdit}
           />
         ))}
 
@@ -857,7 +909,12 @@ export function Canvas() {
       </div>
 
       {editing && (
-        <InlineEditor editing={editing} onCommit={commitEdit} onCancel={() => setEditing(null)} />
+        <InlineEditor
+          key={`${editing.elId}:${editing.field}`}
+          editing={editing}
+          onCommit={commitEdit}
+          onCancel={() => setEditing(null)}
+        />
       )}
 
       <div className="canvas-hint">

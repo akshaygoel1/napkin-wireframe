@@ -11,14 +11,16 @@ Napkin is a browser-based wireframing board: a dotted infinite canvas, hand-draw
 
 ## What is inside
 
-- **Hand-drawn wireframes** — Rough.js strokes, a stable seed per element, and clean/sketchy export styles.
+- **Clean wireframes** — seeded Rough.js geometry, always drawn clean and legible, with one optional colour per component.
 - **56 Material-3-flavoured components** across actions, containment, navigation, selection and text.
 - **328 Material Symbols** with rounded, outlined and sharp styles, search, recents and favourites.
 - **Infinite canvas** — pan, zoom, marquee selection, drag, resize, snapping and frame dragging.
+- **Free images** — drop a screenshot anywhere and it stays independent of every frame, ready to crop.
 - **Frames** — phone (390 × 844), tablet (820 × 1180), desktop (1440 × 900), blank and custom sizes, with real device/browser shells.
 - **Quick-add** — press `/`, type "button", "card", ":home:", `[ Save ]`, `[x]`, `___` or `---`, then hit enter.
-- **PNG export** — single frame, multi-frame ZIP, 1×–4×, transparent / white / paper background, sketchy or clean lines, optional titles and markup.
-- **Local-first** — autosave to `localStorage`, `.napkin` project download/import, and a starter demo board.
+- **PNG export** — single frame, multi-frame ZIP, 1×–4×, transparent / white / paper background, optional titles and markup.
+- **Templates** — a blank napkin for new boards, plus the Tidepool flow from the Templates button.
+- **Local-first** — autosave to `localStorage` and `.napkin` project download/import.
 - **Keyboard-first** — undo/redo, duplicate, copy/paste, nudging, reorder, zoom and fit-all.
 
 ## Keyboard shortcuts

@@ -3,14 +3,12 @@ import JSZip from "jszip";
 import type { Frame, Project } from "../types";
 import { frameBlockRect, shellMetrics } from "./geometry";
 import { frameRegistry } from "./canvasApi";
-import { useStore } from "../store";
 
 export interface ExportOptions {
   scale: 1 | 2 | 3 | 4;
   background: "transparent" | "white" | "paper";
   includeTitle: boolean;
   includeMarkup: boolean;
-  style: "sketchy" | "clean";
 }
 
 const EXPORT_PREFS_KEY = "napkin.export.v1";
@@ -20,7 +18,6 @@ export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
   background: "white",
   includeTitle: false,
   includeMarkup: false,
-  style: "sketchy",
 };
 
 export function loadExportOptions(): ExportOptions {
@@ -35,7 +32,6 @@ export function loadExportOptions(): ExportOptions {
         : DEFAULT_EXPORT_OPTIONS.background,
       includeTitle: typeof parsed.includeTitle === "boolean" ? parsed.includeTitle : DEFAULT_EXPORT_OPTIONS.includeTitle,
       includeMarkup: typeof parsed.includeMarkup === "boolean" ? parsed.includeMarkup : DEFAULT_EXPORT_OPTIONS.includeMarkup,
-      style: parsed.style === "clean" ? "clean" : "sketchy",
     };
   } catch {
     return { ...DEFAULT_EXPORT_OPTIONS };
@@ -103,7 +99,6 @@ async function applyExportClasses(opts: ExportOptions) {
   root.classList.toggle("export-title-on", opts.includeTitle);
   root.classList.toggle("export-title-off", !opts.includeTitle);
   root.classList.toggle("export-markup-off", !opts.includeMarkup);
-  useStore.getState().setCleanExport(opts.style === "clean");
   await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)));
   await document.fonts.ready;
 }
@@ -119,7 +114,6 @@ function clearExportClasses() {
     "export-title-off",
     "export-markup-off",
   );
-  useStore.getState().setCleanExport(false);
 }
 
 export async function renderFramePng(frame: Frame, opts: ExportOptions): Promise<Blob> {

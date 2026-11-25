@@ -64,8 +64,6 @@ export function TopBar() {
   const setAboutOpen = useStore((s) => s.setAboutOpen);
   const setGrid = useStore((s) => s.setGrid);
   const grid = useStore((s) => s.grid);
-  const sketchiness = useStore((s) => s.sketchiness);
-  const setSketchiness = useStore((s) => s.setSketchiness);
   const renameProject = useStore((s) => s.renameProject);
   const newProject = useStore((s) => s.newProject);
   const undo = useStore((s) => s.undo);
@@ -141,7 +139,7 @@ export function TopBar() {
                 />
                 <MenuItem
                   icon={Copy}
-                  label="Open the demo board"
+                  label="Open the Tidepool template"
                   onClick={() => {
                     close();
                     newProject("demo");
@@ -301,27 +299,22 @@ export function TopBar() {
                     setGrid(!grid);
                   }}
                 />
-                <div className="menu-range">
-                  <div className="menu-range-head">
-                    <span>Sketchiness</span>
-                    <span className="menu-range-value">
-                      {sketchiness <= 0.2 ? "Clean" : sketchiness < 1 ? "Light" : sketchiness < 2 ? "Medium" : "Heavy"}
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={3}
-                    step={0.1}
-                    value={sketchiness}
-                    onChange={(e) => setSketchiness(Number(e.target.value))}
-                  />
-                </div>
                 <MenuSeparator />
                 <MenuItem icon={Keyboard} label="Keyboard shortcuts" shortcut="?" onClick={() => { close(); setShortcutsOpen(true); }} />
               </>
             )}
           </Popover>
+
+          <button
+            className="topbar-menu-trigger"
+            title="Open the Tidepool template"
+            onClick={() => {
+              newProject("demo");
+              showToast("Tidepool template opened", "Undo", () => undo());
+            }}
+          >
+            Templates
+          </button>
         </nav>
       </div>
 

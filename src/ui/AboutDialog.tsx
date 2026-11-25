@@ -33,16 +33,16 @@ export function AboutDialog() {
             <p>Every change saves in this browser. No account, no cloud, no waiting. Download a <code>.napkin</code> file when you want a backup.</p>
           </div>
           <div>
-            <h3>Rough on purpose</h3>
-            <p>Strokes are seeded, so a shape never re-jitters. The sketchiness slider goes from clean to properly hand-drawn.</p>
+            <h3>Clean by default</h3>
+            <p>Shapes are seeded, so a wireframe never re-jitters. Napkin always draws clean lines and legible text — no sketchiness dial to fiddle with.</p>
           </div>
           <div>
             <h3>Built from real parts</h3>
-            <p>Components are Material 3-inspired and stay grayscale, so reviews stay about flow and structure.</p>
+            <p>Components are Material 3-inspired, with one optional color each, so reviews stay about flow and structure.</p>
           </div>
           <div>
             <h3>Export is one step</h3>
-            <p>One frame becomes one PNG. Several become a ZIP. Pick 1×–4×, transparent or paper, sketchy or clean.</p>
+            <p>One frame becomes one PNG. Several become a ZIP. Pick 1×–4×, transparent or paper, with or without markup.</p>
           </div>
         </div>
 
